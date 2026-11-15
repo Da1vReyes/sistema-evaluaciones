@@ -14,5 +14,12 @@ public interface VersionClaveBFARepository {
 
     boolean existePorFormularioYVersion(Long idVersionFormulario, String version);
 
+    // Crear una clave nueva en BORRADOR
     VersionClaveBFA guardar(VersionClaveBFA clave);
+
+    // Aprobar una clave existente con evidencia
+    VersionClaveBFA aprobar(Long idClave, String evidenciaAprobacion);
+
+    // Retirar una clave previamente aprobada
+    VersionClaveBFA retirar(Long idClave);
 }

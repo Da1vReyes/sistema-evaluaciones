@@ -98,4 +98,40 @@ public class VersionClaveBFAJpaEntity {
     public String getEvidenciaAprobacion() {
         return evidenciaAprobacion;
     }
+
+    // =====================================================
+    // APROBAR CLAVE ALMACENADA
+    // =====================================================
+
+    public void aprobar(String evidencia) {
+
+        if (estado != EstadoVersionClaveBFA.BORRADOR) {
+            throw new IllegalStateException("Solo se puede aprobar una clave en BORRADOR");
+        }
+
+        if (idClave == null) {
+            throw new IllegalStateException("La clave debe estar guardada antes de aprobarse");
+        }
+
+        if (evidencia == null || evidencia.isBlank()) {
+            throw new IllegalArgumentException("La aprobacion requiere evidencia institucional");
+        }
+
+        this.evidenciaAprobacion = evidencia;
+        this.estado = EstadoVersionClaveBFA.APROBADA;
+    }
+
+    // =====================================================
+    // RETIRAR CLAVE APROBADA
+    // =====================================================
+
+    public void retirar() {
+
+        if (estado != EstadoVersionClaveBFA.APROBADA) {
+            throw new IllegalStateException("Solo se puede retirar una clave APROBADA");
+        }
+
+        // La evidencia original se conserva.
+        this.estado = EstadoVersionClaveBFA.RETIRADA;
+    }
 }

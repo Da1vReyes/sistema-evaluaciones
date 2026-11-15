@@ -65,6 +65,47 @@ public class VersionClaveBFA {
         return estado == EstadoVersionClaveBFA.BORRADOR;
     }
 
+    // =====================================================
+    // APROBAR UNA CLAVE
+    // =====================================================
+
+    public void aprobar(String evidencia) {
+
+        if (estado != EstadoVersionClaveBFA.BORRADOR) {
+            throw new IllegalStateException("Solo se puede aprobar una clave en BORRADOR");
+        }
+
+        if (idClave == null) {
+            throw new IllegalStateException("La clave debe estar guardada antes de aprobarse");
+        }
+
+        if (evidencia == null || evidencia.isBlank()) {
+            throw new IllegalArgumentException("La aprobacion requiere evidencia institucional");
+        }
+
+        this.evidenciaAprobacion = evidencia;
+        this.estado = EstadoVersionClaveBFA.APROBADA;
+    }
+
+    // =====================================================
+    // RETIRAR UNA CLAVE
+    // =====================================================
+
+    public void retirar() {
+
+        if (estado != EstadoVersionClaveBFA.APROBADA) {
+            throw new IllegalStateException("Solo se puede retirar una clave APROBADA");
+        }
+
+        // Se conserva la evidencia de aprobacion.
+        // El retiro no borra los datos historicos.
+        this.estado = EstadoVersionClaveBFA.RETIRADA;
+    }
+
+    // =====================================================
+    // RESTAURAR UNA CLAVE DESDE PERSISTENCIA
+    // =====================================================
+
     public static VersionClaveBFA restaurar(
             Long idClave,
             Long idVersionFormulario,
@@ -91,6 +132,7 @@ public class VersionClaveBFA {
         } else {
 
             if (evidenciaAprobacion == null || evidenciaAprobacion.isBlank()) {
+
                 throw new IllegalArgumentException(
                         "Una clave aprobada o retirada debe tener evidencia");
             }

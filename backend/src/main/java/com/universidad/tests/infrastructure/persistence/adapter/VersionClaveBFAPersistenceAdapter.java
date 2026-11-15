@@ -2,6 +2,7 @@ package com.universidad.tests.infrastructure.persistence.adapter;
 
 import com.universidad.tests.domain.model.EstadoVersionClaveBFA;
 import com.universidad.tests.domain.model.VersionClaveBFA;
+import com.universidad.tests.domain.port.AutorizacionClaveBFAPort;
 import com.universidad.tests.domain.repository.VersionClaveBFARepository;
 import com.universidad.tests.infrastructure.persistence.entity.VersionClaveBFAJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.VersionFormularioJpaEntity;
@@ -18,13 +19,16 @@ public class VersionClaveBFAPersistenceAdapter implements VersionClaveBFAReposit
 
     private final VersionClaveBFAJpaRepository claveJpaRepository;
     private final VersionFormularioJpaRepository formularioJpaRepository;
+    private final AutorizacionClaveBFAPort autorizacion;
 
     public VersionClaveBFAPersistenceAdapter(
             VersionClaveBFAJpaRepository claveJpaRepository,
-            VersionFormularioJpaRepository formularioJpaRepository) {
+            VersionFormularioJpaRepository formularioJpaRepository,
+            AutorizacionClaveBFAPort autorizacion) {
 
         this.claveJpaRepository = claveJpaRepository;
         this.formularioJpaRepository = formularioJpaRepository;
+        this.autorizacion = autorizacion;
     }
 
     @Override
@@ -63,6 +67,7 @@ public class VersionClaveBFAPersistenceAdapter implements VersionClaveBFAReposit
                 idVersionFormulario, version);
     }
 
+    // CREAR UNA CLAVE NUEVA
     @Override
     @Transactional
     public VersionClaveBFA guardar(VersionClaveBFA clave) {
@@ -71,8 +76,6 @@ public class VersionClaveBFAPersistenceAdapter implements VersionClaveBFAReposit
             throw new IllegalArgumentException("La clave de correccion es obligatoria");
         }
 
-        // Solo permitir la creacion de claves nuevas.
-        // La aprobacion y el retiro tendran operaciones protegidas.
         if (clave.getIdClave() != null) {
             throw new IllegalStateException("No se permite actualizar claves mediante este metodo");
         }
@@ -81,7 +84,6 @@ public class VersionClaveBFAPersistenceAdapter implements VersionClaveBFAReposit
             throw new IllegalArgumentException("Una clave nueva debe iniciar en BORRADOR");
         }
 
-        // Comprobar que exista el formulario
         VersionFormularioJpaEntity formulario =
                 formularioJpaRepository
                         .findById(clave.getIdVersionFormulario())
@@ -90,7 +92,6 @@ public class VersionClaveBFAPersistenceAdapter implements VersionClaveBFAReposit
                                         new NoSuchElementException(
                                                 "No existe la version de formulario indicada"));
 
-        // Impedir versiones duplicadas
         if (claveJpaRepository.existsByVersionFormulario_IdVersionFormularioAndVersion(
                 clave.getIdVersionFormulario(), clave.getVersion())) {
 
@@ -98,13 +99,58 @@ public class VersionClaveBFAPersistenceAdapter implements VersionClaveBFAReposit
                     "Ya existe una clave con esa version para el formulario");
         }
 
-        // Crear la entidad JPA
         VersionClaveBFAJpaEntity entidad =
                 new VersionClaveBFAJpaEntity(
                         formulario, clave.getVersion(), clave.getReferenciaFuente());
 
-        // Guardar y devolver el modelo de dominio
         return aDominio(claveJpaRepository.saveAndFlush(entidad));
+    }
+
+    // APROBAR UNA CLAVE
+    @Override
+    @Transactional
+    public VersionClaveBFA aprobar(Long idClave, String evidenciaAprobacion) {
+
+        validarId(idClave);
+
+        autorizacion.exigirPermisoAprobarClave(idClave);
+
+        VersionClaveBFAJpaEntity entidad =
+                claveJpaRepository
+                        .findById(idClave)
+                        .orElseThrow(
+                                () -> new NoSuchElementException("No existe la clave indicada"));
+
+        entidad.aprobar(evidenciaAprobacion);
+
+        return aDominio(claveJpaRepository.saveAndFlush(entidad));
+    }
+
+    // RETIRAR UNA CLAVE
+    @Override
+    @Transactional
+    public VersionClaveBFA retirar(Long idClave) {
+
+        validarId(idClave);
+
+        autorizacion.exigirPermisoRetirarClave(idClave);
+
+        VersionClaveBFAJpaEntity entidad =
+                claveJpaRepository
+                        .findById(idClave)
+                        .orElseThrow(
+                                () -> new NoSuchElementException("No existe la clave indicada"));
+
+        entidad.retirar();
+
+        return aDominio(claveJpaRepository.saveAndFlush(entidad));
+    }
+
+    private void validarId(Long idClave) {
+
+        if (idClave == null || idClave <= 0) {
+            throw new IllegalArgumentException("El identificador de la clave debe ser positivo");
+        }
     }
 
     private VersionClaveBFA aDominio(VersionClaveBFAJpaEntity entidad) {
