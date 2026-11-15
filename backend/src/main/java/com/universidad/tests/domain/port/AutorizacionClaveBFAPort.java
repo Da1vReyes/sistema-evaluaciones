@@ -2,18 +2,51 @@ package com.universidad.tests.domain.port;
 
 public interface AutorizacionClaveBFAPort {
 
-    // Verificar permiso para crear una clave
+    // =====================================================
+    // 1. CREAR CLAVES
+    // =====================================================
+
     void exigirPermisoCrearClave(Long idVersionFormulario);
 
-    // Verificar permiso para registrar respuestas correctas
+    // =====================================================
+    // 2. REGISTRAR RESPUESTAS CORRECTAS
+    // =====================================================
+
     void exigirPermisoAgregarEntrada(Long idClave);
 
-    // Verificar permiso para consultar respuestas correctas
+    // =====================================================
+    // 3. CONSULTAR RESPUESTAS CORRECTAS
+    // =====================================================
+
     void exigirPermisoConsultarClave(Long idClave);
 
-    // Verificar permiso para aprobar una clave oficial
+    // =====================================================
+    // 4. APROBAR CLAVES
+    // =====================================================
+
     void exigirPermisoAprobarClave(Long idClave);
 
-    // Verificar permiso para retirar una clave
+    // =====================================================
+    // 5. RETIRAR CLAVES
+    // =====================================================
+
     void exigirPermisoRetirarClave(Long idClave);
+
+    // =====================================================
+    // 6. UTILIZAR CLAVES PARA CALIFICACIONES
+    // =====================================================
+
+    default void exigirPermisoCalificarConClave(Long idClave) {
+
+        // Por seguridad, se deniega el acceso mientras
+        // no exista una implementacion autorizada.
+        //
+        // El permiso de calificar es independiente
+        // del permiso de consultar respuestas correctas.
+
+        throw new SecurityException(
+                "Operacion no autorizada: "
+                        + "el permiso de calificacion BFA "
+                        + "aun no esta configurado");
+    }
 }

@@ -61,12 +61,32 @@ public class VersionClaveBFA {
         return evidenciaAprobacion;
     }
 
+    // =====================================================
+    // 1. VERIFICAR SI LA CLAVE ES EDITABLE
+    // =====================================================
+
     public boolean esEditable() {
         return estado == EstadoVersionClaveBFA.BORRADOR;
     }
 
     // =====================================================
-    // APROBAR UNA CLAVE
+    // 2. VERIFICAR SI LA CLAVE PUEDE CALIFICAR
+    // =====================================================
+
+    public boolean esAptaParaNuevaCalificacion() {
+        return estado == EstadoVersionClaveBFA.APROBADA;
+    }
+
+    public void exigirAptaParaNuevaCalificacion() {
+
+        if (!esAptaParaNuevaCalificacion()) {
+            throw new IllegalStateException(
+                    "Solo una clave APROBADA puede utilizarse " + "para nuevas calificaciones");
+        }
+    }
+
+    // =====================================================
+    // 3. APROBAR UNA CLAVE
     // =====================================================
 
     public void aprobar(String evidencia) {
@@ -88,7 +108,7 @@ public class VersionClaveBFA {
     }
 
     // =====================================================
-    // RETIRAR UNA CLAVE
+    // 4. RETIRAR UNA CLAVE
     // =====================================================
 
     public void retirar() {
@@ -103,7 +123,7 @@ public class VersionClaveBFA {
     }
 
     // =====================================================
-    // RESTAURAR UNA CLAVE DESDE PERSISTENCIA
+    // 5. RESTAURAR UNA CLAVE DESDE PERSISTENCIA
     // =====================================================
 
     public static VersionClaveBFA restaurar(
@@ -126,7 +146,7 @@ public class VersionClaveBFA {
 
             if (evidenciaAprobacion != null) {
                 throw new IllegalArgumentException(
-                        "Una clave en BORRADOR no debe tener evidencia de aprobacion");
+                        "Una clave en BORRADOR no debe tener " + "evidencia de aprobacion");
             }
 
         } else {
@@ -134,7 +154,7 @@ public class VersionClaveBFA {
             if (evidenciaAprobacion == null || evidenciaAprobacion.isBlank()) {
 
                 throw new IllegalArgumentException(
-                        "Una clave aprobada o retirada debe tener evidencia");
+                        "Una clave aprobada o retirada " + "debe tener evidencia");
             }
         }
 

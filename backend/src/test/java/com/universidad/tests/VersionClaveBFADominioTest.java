@@ -1,5 +1,6 @@
 package com.universidad.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -16,20 +17,29 @@ class VersionClaveBFADominioTest {
         return new VersionClaveBFA(10L, 5L, "CLAVE-V1", "MATERIAL-SINTETICO");
     }
 
-    // 1. Una nueva clave inicia en BORRADOR
+    // =====================================================
+    // 1. UNA NUEVA CLAVE INICIA EN BORRADOR
+    // =====================================================
+
     @Test
     void debeCrearClaveEnBorrador() {
+
         VersionClaveBFA clave = crearClave();
 
         assertEquals(EstadoVersionClaveBFA.BORRADOR, clave.getEstado());
 
         assertTrue(clave.esEditable());
+
         assertNull(clave.getEvidenciaAprobacion());
     }
 
-    // 2. Aprobar una clave con evidencia
+    // =====================================================
+    // 2. APROBAR UNA CLAVE CON EVIDENCIA
+    // =====================================================
+
     @Test
     void debeAprobarClaveConEvidencia() {
+
         VersionClaveBFA clave = crearClave();
 
         clave.aprobar("APROBACION-SINTETICA-001");
@@ -41,9 +51,13 @@ class VersionClaveBFADominioTest {
         assertFalse(clave.esEditable());
     }
 
-    // 3. Rechazar aprobacion sin evidencia
+    // =====================================================
+    // 3. RECHAZAR APROBACION SIN EVIDENCIA
+    // =====================================================
+
     @Test
     void debeRechazarAprobacionSinEvidencia() {
+
         VersionClaveBFA clave = crearClave();
 
         assertThrows(IllegalArgumentException.class, () -> clave.aprobar(null));
@@ -55,9 +69,13 @@ class VersionClaveBFADominioTest {
         assertNull(clave.getEvidenciaAprobacion());
     }
 
-    // 4. Rechazar aprobacion de clave no guardada
+    // =====================================================
+    // 4. RECHAZAR APROBACION DE CLAVE SIN ID
+    // =====================================================
+
     @Test
     void debeRechazarAprobacionDeClaveSinId() {
+
         VersionClaveBFA clave = new VersionClaveBFA(null, 5L, "CLAVE-V1", "MATERIAL-SINTETICO");
 
         assertThrows(IllegalStateException.class, () -> clave.aprobar("EVIDENCIA-SINTETICA"));
@@ -65,9 +83,13 @@ class VersionClaveBFADominioTest {
         assertEquals(EstadoVersionClaveBFA.BORRADOR, clave.getEstado());
     }
 
-    // 5. Impedir aprobar nuevamente una clave
+    // =====================================================
+    // 5. IMPEDIR APROBAR NUEVAMENTE UNA CLAVE
+    // =====================================================
+
     @Test
     void debeRechazarDobleAprobacion() {
+
         VersionClaveBFA clave = crearClave();
 
         clave.aprobar("APROBACION-ORIGINAL");
@@ -77,9 +99,13 @@ class VersionClaveBFADominioTest {
         assertEquals("APROBACION-ORIGINAL", clave.getEvidenciaAprobacion());
     }
 
-    // 6. Retirar una clave aprobada
+    // =====================================================
+    // 6. RETIRAR UNA CLAVE APROBADA
+    // =====================================================
+
     @Test
     void debeRetirarClaveAprobada() {
+
         VersionClaveBFA clave = crearClave();
 
         clave.aprobar("APROBACION-SINTETICA");
@@ -89,13 +115,16 @@ class VersionClaveBFADominioTest {
 
         assertFalse(clave.esEditable());
 
-        // Conservar evidencia historica
         assertEquals("APROBACION-SINTETICA", clave.getEvidenciaAprobacion());
     }
 
-    // 7. Impedir retirar una clave en BORRADOR
+    // =====================================================
+    // 7. IMPEDIR RETIRAR UNA CLAVE EN BORRADOR
+    // =====================================================
+
     @Test
     void debeRechazarRetiroDeClaveEnBorrador() {
+
         VersionClaveBFA clave = crearClave();
 
         assertThrows(IllegalStateException.class, clave::retirar);
@@ -103,9 +132,13 @@ class VersionClaveBFADominioTest {
         assertEquals(EstadoVersionClaveBFA.BORRADOR, clave.getEstado());
     }
 
-    // 8. Impedir retirar dos veces una clave
+    // =====================================================
+    // 8. IMPEDIR RETIRAR DOS VECES UNA CLAVE
+    // =====================================================
+
     @Test
     void debeRechazarDobleRetiro() {
+
         VersionClaveBFA clave = crearClave();
 
         clave.aprobar("APROBACION-SINTETICA");
@@ -116,9 +149,13 @@ class VersionClaveBFADominioTest {
         assertEquals(EstadoVersionClaveBFA.RETIRADA, clave.getEstado());
     }
 
-    // 9. Impedir volver a aprobar una clave retirada
+    // =====================================================
+    // 9. IMPEDIR VOLVER A APROBAR UNA CLAVE RETIRADA
+    // =====================================================
+
     @Test
     void debeRechazarReaprobacionDeClaveRetirada() {
+
         VersionClaveBFA clave = crearClave();
 
         clave.aprobar("APROBACION-ORIGINAL");
@@ -129,5 +166,69 @@ class VersionClaveBFADominioTest {
         assertEquals(EstadoVersionClaveBFA.RETIRADA, clave.getEstado());
 
         assertEquals("APROBACION-ORIGINAL", clave.getEvidenciaAprobacion());
+    }
+
+    // =====================================================
+    // 10. BORRADOR NO PUEDE CALIFICAR
+    // =====================================================
+
+    @Test
+    void debeRechazarNuevaCalificacionConClaveEnBorrador() {
+
+        VersionClaveBFA clave = crearClave();
+
+        assertFalse(clave.esAptaParaNuevaCalificacion());
+
+        IllegalStateException excepcion =
+                assertThrows(IllegalStateException.class, clave::exigirAptaParaNuevaCalificacion);
+
+        assertTrue(excepcion.getMessage().contains("Solo una clave APROBADA"));
+
+        assertEquals(EstadoVersionClaveBFA.BORRADOR, clave.getEstado());
+    }
+
+    // =====================================================
+    // 11. CLAVE APROBADA PUEDE CALIFICAR
+    // =====================================================
+
+    @Test
+    void debePermitirNuevaCalificacionConClaveAprobada() {
+
+        VersionClaveBFA clave = crearClave();
+
+        clave.aprobar("EVIDENCIA-OFICIAL-SINTETICA");
+
+        assertTrue(clave.esAptaParaNuevaCalificacion());
+
+        assertDoesNotThrow(clave::exigirAptaParaNuevaCalificacion);
+
+        assertEquals(EstadoVersionClaveBFA.APROBADA, clave.getEstado());
+
+        assertEquals("EVIDENCIA-OFICIAL-SINTETICA", clave.getEvidenciaAprobacion());
+    }
+
+    // =====================================================
+    // 12. CLAVE RETIRADA NO PUEDE CALIFICAR
+    // =====================================================
+
+    @Test
+    void debeRechazarNuevaCalificacionConClaveRetirada() {
+
+        VersionClaveBFA clave = crearClave();
+
+        clave.aprobar("EVIDENCIA-OFICIAL-SINTETICA");
+        clave.retirar();
+
+        assertFalse(clave.esAptaParaNuevaCalificacion());
+
+        IllegalStateException excepcion =
+                assertThrows(IllegalStateException.class, clave::exigirAptaParaNuevaCalificacion);
+
+        assertTrue(excepcion.getMessage().contains("Solo una clave APROBADA"));
+
+        assertEquals(EstadoVersionClaveBFA.RETIRADA, clave.getEstado());
+
+        // La evidencia historica permanece intacta.
+        assertEquals("EVIDENCIA-OFICIAL-SINTETICA", clave.getEvidenciaAprobacion());
     }
 }
