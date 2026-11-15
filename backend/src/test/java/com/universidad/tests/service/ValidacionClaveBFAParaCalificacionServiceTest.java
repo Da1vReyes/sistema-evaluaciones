@@ -10,10 +10,14 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.universidad.tests.application.service.ValidacionClaveBFAParaCalificacionService;
+import com.universidad.tests.application.service.ValidacionCoberturaClaveBFAService;
+import com.universidad.tests.domain.model.EntradaClaveBFA;
 import com.universidad.tests.domain.model.EstadoVersionClaveBFA;
 import com.universidad.tests.domain.model.VersionClaveBFA;
 import com.universidad.tests.domain.port.AutorizacionClaveBFAPort;
+import com.universidad.tests.domain.repository.EntradaClaveBFARepository;
 import com.universidad.tests.domain.repository.VersionClaveBFARepository;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -26,6 +30,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ValidacionClaveBFAParaCalificacionServiceTest {
 
     @Mock private VersionClaveBFARepository claveRepository;
+
+    @Mock private EntradaClaveBFARepository entradaRepository;
+
+    @Mock private ValidacionCoberturaClaveBFAService validadorCobertura;
 
     @Mock private AutorizacionClaveBFAPort autorizacion;
 
@@ -60,6 +68,12 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
                 "MATERIAL-SINTETICO",
                 EstadoVersionClaveBFA.RETIRADA,
                 "EVIDENCIA-OFICIAL-SINTETICA");
+    }
+
+    private List<EntradaClaveBFA> entradasSinteticas() {
+
+        return List.of(
+                new EntradaClaveBFA(1L, 10L, 101L, 405L), new EntradaClaveBFA(2L, 10L, 102L, 409L));
     }
 
     // =====================================================
@@ -201,21 +215,211 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
     @Test
     void debeRechazarAccesoSinPermisoAntesDeConsultarClave() {
 
-        // Simular una autorizacion denegada.
         doThrow(new SecurityException("Operacion no autorizada: permiso BFA denegado"))
                 .when(autorizacion)
                 .exigirPermisoCalificarConClave(10L);
 
-        // El servicio debe detenerse inmediatamente.
         SecurityException excepcion =
                 assertThrows(SecurityException.class, () -> servicio.obtenerClaveAprobada(10L, 5L));
 
         assertTrue(excepcion.getMessage().contains("permiso BFA denegado"));
 
-        // Comprobar que se exigio el permiso.
         verify(autorizacion).exigirPermisoCalificarConClave(10L);
 
-        // La base de datos NO debe ser consultada.
         verifyNoInteractions(claveRepository);
+    }
+
+    // =====================================================
+    // 9. ENTREGAR RESPUESTAS CORRECTAS AUTORIZADAS
+    // =====================================================
+
+    @Test
+    void debeEntregarEntradasDeClaveAprobadaYCompleta() {
+
+        VersionClaveBFA clave = claveAprobada();
+        List<EntradaClaveBFA> esperadas = entradasSinteticas();
+
+        when(claveRepository.buscarPorId(10L)).thenReturn(Optional.of(clave));
+
+        when(entradaRepository.listarPorClave(10L)).thenReturn(esperadas);
+
+        List<EntradaClaveBFA> resultado =
+                servicio.obtenerEntradasAprobadasParaCalificacion(10L, 5L);
+
+        assertEquals(2, resultado.size());
+
+        assertSame(esperadas.get(0), resultado.get(0));
+        assertSame(esperadas.get(1), resultado.get(1));
+
+        assertEquals(101L, resultado.get(0).getIdPregunta());
+        assertEquals(405L, resultado.get(0).getIdOpcionCorrecta());
+
+        assertEquals(102L, resultado.get(1).getIdPregunta());
+        assertEquals(409L, resultado.get(1).getIdOpcionCorrecta());
+
+        // La lista entregada no puede modificarse.
+        assertThrows(UnsupportedOperationException.class, () -> resultado.clear());
+
+        verify(autorizacion).exigirPermisoCalificarConClave(10L);
+
+        verify(claveRepository).buscarPorId(10L);
+
+        verify(validadorCobertura).validarCoberturaSeleccion(10L);
+
+        verify(entradaRepository).listarPorClave(10L);
+    }
+
+    // =====================================================
+    // 10. RECHAZAR CLAVE CON COBERTURA INCOMPLETA
+    // =====================================================
+
+    @Test
+    void debeRechazarClaveIncompletaAntesDeEntregarEntradas() {
+
+        when(claveRepository.buscarPorId(10L)).thenReturn(Optional.of(claveAprobada()));
+
+        doThrow(
+                        new IllegalStateException(
+                                "La clave no cubre exactamente todas "
+                                        + "las preguntas de seleccion del formulario"))
+                .when(validadorCobertura)
+                .validarCoberturaSeleccion(10L);
+
+        IllegalStateException excepcion =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, 5L));
+
+        assertTrue(excepcion.getMessage().contains("La clave no cubre exactamente"));
+
+        verify(autorizacion).exigirPermisoCalificarConClave(10L);
+
+        verify(validadorCobertura).validarCoberturaSeleccion(10L);
+
+        // No se entregan las respuestas.
+        verifyNoInteractions(entradaRepository);
+    }
+
+    // =====================================================
+    // 11. IMPEDIR ENTREGA SIN AUTORIZACION
+    // =====================================================
+
+    @Test
+    void debeRechazarConsultaDeEntradasSinPermiso() {
+
+        doThrow(new SecurityException("Operacion no autorizada: permiso BFA denegado"))
+                .when(autorizacion)
+                .exigirPermisoCalificarConClave(10L);
+
+        SecurityException excepcion =
+                assertThrows(
+                        SecurityException.class,
+                        () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, 5L));
+
+        assertTrue(excepcion.getMessage().contains("permiso BFA denegado"));
+
+        verify(autorizacion).exigirPermisoCalificarConClave(10L);
+
+        // No debe consultarse ningun repositorio.
+        verifyNoInteractions(claveRepository);
+        verifyNoInteractions(entradaRepository);
+        verifyNoInteractions(validadorCobertura);
+    }
+
+    // =====================================================
+    // 12. IMPEDIR ENTREGA DE CLAVE EN BORRADOR
+    // =====================================================
+
+    @Test
+    void debeRechazarEntradasDeClaveEnBorrador() {
+
+        when(claveRepository.buscarPorId(10L)).thenReturn(Optional.of(claveBorrador()));
+
+        IllegalStateException excepcion =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, 5L));
+
+        assertTrue(excepcion.getMessage().contains("Solo una clave APROBADA"));
+
+        verifyNoInteractions(validadorCobertura);
+        verifyNoInteractions(entradaRepository);
+    }
+
+    // =====================================================
+    // 13. IMPEDIR ENTREGA DE CLAVE RETIRADA
+    // =====================================================
+
+    @Test
+    void debeRechazarEntradasDeClaveRetirada() {
+
+        when(claveRepository.buscarPorId(10L)).thenReturn(Optional.of(claveRetirada()));
+
+        IllegalStateException excepcion =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, 5L));
+
+        assertTrue(excepcion.getMessage().contains("Solo una clave APROBADA"));
+
+        verifyNoInteractions(validadorCobertura);
+        verifyNoInteractions(entradaRepository);
+    }
+
+    // =====================================================
+    // 14. IMPEDIR ENTREGA DE OTRO FORMULARIO
+    // =====================================================
+
+    @Test
+    void debeRechazarEntradasDeFormularioIncompatible() {
+
+        when(claveRepository.buscarPorId(10L)).thenReturn(Optional.of(claveAprobada()));
+
+        IllegalStateException excepcion =
+                assertThrows(
+                        IllegalStateException.class,
+                        () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, 8L));
+
+        assertTrue(excepcion.getMessage().contains("no pertenece a la version"));
+
+        verifyNoInteractions(validadorCobertura);
+        verifyNoInteractions(entradaRepository);
+    }
+
+    // =====================================================
+    // 15. VALIDAR IDS ANTES DE CONSULTAR ENTRADAS
+    // =====================================================
+
+    @Test
+    void debeRechazarIdentificadoresInvalidosAlSolicitarEntradas() {
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.obtenerEntradasAprobadasParaCalificacion(null, 5L));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.obtenerEntradasAprobadasParaCalificacion(0L, 5L));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.obtenerEntradasAprobadasParaCalificacion(-1L, 5L));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, null));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, 0L));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.obtenerEntradasAprobadasParaCalificacion(10L, -1L));
+
+        verifyNoInteractions(claveRepository);
+        verifyNoInteractions(entradaRepository);
+        verifyNoInteractions(validadorCobertura);
+        verifyNoInteractions(autorizacion);
     }
 }

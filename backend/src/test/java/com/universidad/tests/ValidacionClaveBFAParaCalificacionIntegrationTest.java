@@ -3,13 +3,19 @@ package com.universidad.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.universidad.tests.application.service.AprobacionClaveBFAService;
+import com.universidad.tests.application.service.GestionClaveBFAService;
 import com.universidad.tests.application.service.ValidacionClaveBFAParaCalificacionService;
+import com.universidad.tests.domain.model.EntradaClaveBFA;
 import com.universidad.tests.domain.model.EstadoVersionClaveBFA;
 import com.universidad.tests.domain.model.VersionClaveBFA;
 import com.universidad.tests.domain.port.AutorizacionClaveBFAPort;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,20 +32,32 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
     @Autowired private ValidacionClaveBFAParaCalificacionService servicio;
 
+    @Autowired private AprobacionClaveBFAService aprobacionService;
+
+    @Autowired private GestionClaveBFAService gestionService;
+
     @Autowired private JdbcTemplate jdbc;
 
+    // Autorizacion simulada exclusivamente en pruebas.
     @MockitoBean private AutorizacionClaveBFAPort autorizacion;
 
+    private Long idTest;
     private Long idFormulario;
     private Long idClave;
 
+    private Long idPregunta1;
+    private Long idPregunta2;
+    private Long idOpcion1;
+    private Long idOpcion2;
+
     // =====================================================
-    // PREPARAR DATOS EN LA BASE DE PRUEBAS
+    // PREPARAR DATOS SINTETICOS
     // =====================================================
 
     @BeforeEach
     void prepararDatosSinteticos() {
 
+        // Nunca ejecutar contra la base principal.
         String base = jdbc.queryForObject("SELECT current_database()", String.class);
 
         if (!"evaluaciones_bfa_test".equals(base)) {
@@ -49,50 +67,50 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         String codigo = "BFA_CAL_" + UUID.randomUUID().toString().replace("-", "");
 
-        Long idTest =
-                jdbc.queryForObject(
+        // Crear un test sintetico.
+        idTest =
+                insertar(
                         "INSERT INTO test "
                                 + "(codigo, nombre, descripcion, activo) "
                                 + "VALUES (?, ?, ?, ?) "
                                 + "RETURNING id_test",
-                        Long.class,
                         codigo,
                         "Test sintetico de calificacion BFA",
                         "Prueba de integracion",
                         true);
 
+        // Crear una version de formulario.
         idFormulario =
-                jdbc.queryForObject(
+                insertar(
                         "INSERT INTO version_formulario "
                                 + "(id_test, codigo_version, descripcion, fuente_ref) "
                                 + "VALUES (?, ?, ?, ?) "
                                 + "RETURNING id_version_formulario",
-                        Long.class,
                         idTest,
                         "v1",
                         "Formulario sintetico",
                         "FUENTE-SINTETICA");
 
+        // Crear clave inicialmente en BORRADOR.
         idClave =
-                jdbc.queryForObject(
+                insertar(
                         "INSERT INTO version_clave_bfa "
                                 + "(id_version_formulario, version, referencia_fuente) "
                                 + "VALUES (?, ?, ?) "
                                 + "RETURNING id_clave",
-                        Long.class,
                         idFormulario,
                         "CLAVE-V1",
                         "MATERIAL-SINTETICO");
     }
 
     // =====================================================
-    // 1. CLAVE APROBADA
+    // 1. PERMITIR CLAVE APROBADA
     // =====================================================
 
     @Test
     void debeAceptarClaveAprobadaDesdePostgreSQL() {
 
-        aprobarClave();
+        aprobarClaveDirectamente();
 
         VersionClaveBFA resultado = servicio.obtenerClaveAprobada(idClave, idFormulario);
 
@@ -106,7 +124,7 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     }
 
     // =====================================================
-    // 2. CLAVE EN BORRADOR
+    // 2. RECHAZAR CLAVE EN BORRADOR
     // =====================================================
 
     @Test
@@ -123,13 +141,13 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     }
 
     // =====================================================
-    // 3. CLAVE RETIRADA
+    // 3. RECHAZAR CLAVE RETIRADA
     // =====================================================
 
     @Test
     void debeRechazarClaveRetiradaDesdePostgreSQL() {
 
-        aprobarClave();
+        aprobarClaveDirectamente();
         retirarClave();
 
         IllegalStateException excepcion =
@@ -145,13 +163,13 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     }
 
     // =====================================================
-    // 4. CLAVE DE OTRO FORMULARIO
+    // 4. RECHAZAR CLAVE DE OTRO FORMULARIO
     // =====================================================
 
     @Test
     void debeRechazarClaveDeOtroFormularioDesdePostgreSQL() {
 
-        aprobarClave();
+        aprobarClaveDirectamente();
 
         Long idFormularioDiferente = idFormulario + 10000L;
 
@@ -166,7 +184,7 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     }
 
     // =====================================================
-    // 5. CLAVE INEXISTENTE
+    // 5. RECHAZAR CLAVE INEXISTENTE
     // =====================================================
 
     @Test
@@ -178,21 +196,18 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     }
 
     // =====================================================
-    // 6. CLAVE APROBADA SIN AUTORIZACION
+    // 6. RECHAZAR CLAVE SIN AUTORIZACION
     // =====================================================
 
     @Test
     void debeRechazarAccesoSinPermisoDesdePostgreSQL() {
 
-        // La clave existe y esta aprobada.
-        aprobarClave();
+        aprobarClaveDirectamente();
 
-        // Simular que el usuario no tiene permiso.
         doThrow(new SecurityException("Operacion no autorizada: permiso BFA denegado"))
                 .when(autorizacion)
                 .exigirPermisoCalificarConClave(idClave);
 
-        // La solicitud debe ser rechazada.
         SecurityException excepcion =
                 assertThrows(
                         SecurityException.class,
@@ -200,13 +215,173 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         assertTrue(excepcion.getMessage().contains("permiso BFA denegado"));
 
-        // Confirmar que se verifico el permiso.
         verify(autorizacion).exigirPermisoCalificarConClave(idClave);
 
-        // La clave sigue aprobada y no fue alterada.
+        // El registro no debe modificarse.
         assertEquals("APROBADA", estadoEnBaseDeDatos());
 
-        // Su evidencia institucional se conserva.
+        assertEquals(EVIDENCIA, evidenciaEnBaseDeDatos());
+    }
+
+    // =====================================================
+    // 7. OBTENER RESPUESTAS CORRECTAS DESDE POSTGRESQL
+    // =====================================================
+
+    @Test
+    void debeEntregarEntradasDeClaveCompletaYAutorizada() {
+
+        // Crear preguntas y opciones reales de prueba.
+        prepararPreguntasSeleccion();
+
+        // Registrar entradas usando el servicio existente.
+        registrarDosEntradasValidas();
+
+        // Aprobar mediante el servicio real.
+        aprobacionService.aprobarClave(idClave, EVIDENCIA);
+
+        // Limpiar las invocaciones de la preparacion.
+        clearInvocations(autorizacion);
+
+        List<EntradaClaveBFA> resultado =
+                servicio.obtenerEntradasAprobadasParaCalificacion(idClave, idFormulario);
+
+        assertEquals(2, resultado.size());
+
+        // Comprobar primera respuesta correcta.
+        assertTrue(
+                resultado.stream()
+                        .anyMatch(
+                                entrada ->
+                                        idPregunta1.equals(entrada.getIdPregunta())
+                                                && idOpcion1.equals(
+                                                        entrada.getIdOpcionCorrecta())));
+
+        // Comprobar segunda respuesta correcta.
+        assertTrue(
+                resultado.stream()
+                        .anyMatch(
+                                entrada ->
+                                        idPregunta2.equals(entrada.getIdPregunta())
+                                                && idOpcion2.equals(
+                                                        entrada.getIdOpcionCorrecta())));
+
+        // La lista devuelta no debe poder modificarse.
+        assertThrows(UnsupportedOperationException.class, () -> resultado.clear());
+
+        // Verificar permisos exigidos.
+        verify(autorizacion).exigirPermisoCalificarConClave(idClave);
+
+        verify(autorizacion).exigirPermisoConsultarClave(idClave);
+
+        // La clave mantiene su estado y evidencia.
+        assertEquals("APROBADA", estadoEnBaseDeDatos());
+
+        assertEquals(EVIDENCIA, evidenciaEnBaseDeDatos());
+    }
+
+    // =====================================================
+    // 8. RECHAZAR CLAVE APROBADA PERO INCOMPLETA
+    // =====================================================
+
+    @Test
+    void debeRechazarClaveAprobadaPeroIncompleta() {
+
+        prepararPreguntasSeleccion();
+
+        // Registrar solo una de las dos preguntas.
+        registrarPrimeraEntrada();
+
+        // Simular una aprobacion directa que omitio
+        // la validacion normal de cobertura.
+        aprobarClaveDirectamente();
+
+        IllegalStateException excepcion =
+                assertThrows(
+                        IllegalStateException.class,
+                        () ->
+                                servicio.obtenerEntradasAprobadasParaCalificacion(
+                                        idClave, idFormulario));
+
+        assertTrue(excepcion.getMessage().contains("La clave no cubre exactamente"));
+
+        // No se modifican los datos registrados.
+        assertEquals("APROBADA", estadoEnBaseDeDatos());
+
+        assertEquals(1L, contarEntradas());
+    }
+
+    // =====================================================
+    // 9. RECHAZAR ENTREGA SIN PERMISO DE CALIFICACION
+    // =====================================================
+
+    @Test
+    void debeDenegarEntregaSinPermisoDeCalificacion() {
+
+        prepararPreguntasSeleccion();
+        registrarDosEntradasValidas();
+
+        aprobacionService.aprobarClave(idClave, EVIDENCIA);
+
+        clearInvocations(autorizacion);
+
+        doThrow(new SecurityException("Sin permiso para calificar"))
+                .when(autorizacion)
+                .exigirPermisoCalificarConClave(idClave);
+
+        SecurityException excepcion =
+                assertThrows(
+                        SecurityException.class,
+                        () ->
+                                servicio.obtenerEntradasAprobadasParaCalificacion(
+                                        idClave, idFormulario));
+
+        assertTrue(excepcion.getMessage().contains("Sin permiso para calificar"));
+
+        verify(autorizacion).exigirPermisoCalificarConClave(idClave);
+
+        // No debe iniciarse la validacion de cobertura.
+        verify(autorizacion, never()).exigirPermisoConsultarClave(idClave);
+
+        // Los datos deben permanecer intactos.
+        assertEquals("APROBADA", estadoEnBaseDeDatos());
+
+        assertEquals(2L, contarEntradas());
+    }
+
+    // =====================================================
+    // 10. RECHAZAR ENTREGA SIN PERMISO DE CONSULTA
+    // =====================================================
+
+    @Test
+    void debeDenegarEntregaSinPermisoDeConsulta() {
+
+        prepararPreguntasSeleccion();
+        registrarDosEntradasValidas();
+
+        aprobacionService.aprobarClave(idClave, EVIDENCIA);
+
+        clearInvocations(autorizacion);
+
+        doThrow(new SecurityException("Sin permiso para consultar claves"))
+                .when(autorizacion)
+                .exigirPermisoConsultarClave(idClave);
+
+        SecurityException excepcion =
+                assertThrows(
+                        SecurityException.class,
+                        () ->
+                                servicio.obtenerEntradasAprobadasParaCalificacion(
+                                        idClave, idFormulario));
+
+        assertTrue(excepcion.getMessage().contains("Sin permiso para consultar claves"));
+
+        verify(autorizacion).exigirPermisoCalificarConClave(idClave);
+
+        verify(autorizacion).exigirPermisoConsultarClave(idClave);
+
+        // La clave debe seguir aprobada.
+        assertEquals("APROBADA", estadoEnBaseDeDatos());
+
         assertEquals(EVIDENCIA, evidenciaEnBaseDeDatos());
     }
 
@@ -214,7 +389,102 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     // METODOS AUXILIARES
     // =====================================================
 
-    private void aprobarClave() {
+    private void prepararPreguntasSeleccion() {
+
+        // Crear subprueba sintetica.
+        Long idSubprueba =
+                insertar(
+                        "INSERT INTO subprueba "
+                                + "(id_test, codigo, nombre, descripcion) "
+                                + "VALUES (?, ?, ?, ?) "
+                                + "RETURNING id_subprueba",
+                        idTest,
+                        "SUB_CAL",
+                        "Subprueba sintetica",
+                        "Datos de prueba");
+
+        // Crear configuracion de seleccion.
+        Long idConfiguracion =
+                insertar(
+                        "INSERT INTO configuracion_subprueba "
+                                + "(id_version_formulario, id_subprueba, "
+                                + "orden_aplicacion, tipo_respuesta, instrucciones_ref) "
+                                + "VALUES (?, ?, ?, ?, ?) "
+                                + "RETURNING id_configuracion_subprueba",
+                        idFormulario,
+                        idSubprueba,
+                        1,
+                        "SELECCION",
+                        "Instrucciones sinteticas");
+
+        // Pregunta 1.
+        idPregunta1 =
+                insertar(
+                        "INSERT INTO pregunta "
+                                + "(id_configuracion_subprueba, numero_visible, "
+                                + "orden_presentacion, enunciado) "
+                                + "VALUES (?, ?, ?, ?) "
+                                + "RETURNING id_pregunta",
+                        idConfiguracion,
+                        "1",
+                        1,
+                        "Pregunta sintetica uno");
+
+        // Pregunta 2.
+        idPregunta2 =
+                insertar(
+                        "INSERT INTO pregunta "
+                                + "(id_configuracion_subprueba, numero_visible, "
+                                + "orden_presentacion, enunciado) "
+                                + "VALUES (?, ?, ?, ?) "
+                                + "RETURNING id_pregunta",
+                        idConfiguracion,
+                        "2",
+                        2,
+                        "Pregunta sintetica dos");
+
+        // Opcion correcta para pregunta 1.
+        idOpcion1 =
+                insertar(
+                        "INSERT INTO opcion_respuesta "
+                                + "(id_pregunta, codigo, orden_presentacion, texto) "
+                                + "VALUES (?, ?, ?, ?) "
+                                + "RETURNING id_opcion",
+                        idPregunta1,
+                        "A",
+                        1,
+                        "Opcion sintetica uno");
+
+        // Opcion correcta para pregunta 2.
+        idOpcion2 =
+                insertar(
+                        "INSERT INTO opcion_respuesta "
+                                + "(id_pregunta, codigo, orden_presentacion, texto) "
+                                + "VALUES (?, ?, ?, ?) "
+                                + "RETURNING id_opcion",
+                        idPregunta2,
+                        "A",
+                        1,
+                        "Opcion sintetica dos");
+    }
+
+    private void registrarPrimeraEntrada() {
+
+        gestionService.registrarEntrada(idClave, idPregunta1, idOpcion1);
+    }
+
+    private void registrarDosEntradasValidas() {
+
+        gestionService.registrarEntradas(
+                idClave,
+                List.of(
+                        new EntradaClaveBFA(null, idClave, idPregunta1, idOpcion1),
+                        new EntradaClaveBFA(null, idClave, idPregunta2, idOpcion2)));
+    }
+
+    // Usado para las pruebas anteriores y para simular
+    // una aprobacion sin verificar cobertura.
+    private void aprobarClaveDirectamente() {
 
         jdbc.update(
                 "UPDATE version_clave_bfa "
@@ -232,6 +502,11 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                 idClave);
     }
 
+    private Long insertar(String sql, Object... parametros) {
+
+        return jdbc.queryForObject(sql, Long.class, parametros);
+    }
+
     private String estadoEnBaseDeDatos() {
 
         return jdbc.queryForObject(
@@ -246,5 +521,16 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                 "SELECT evidencia_aprobacion " + "FROM version_clave_bfa " + "WHERE id_clave = ?",
                 String.class,
                 idClave);
+    }
+
+    private long contarEntradas() {
+
+        Long cantidad =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) " + "FROM entrada_clave_bfa " + "WHERE id_clave = ?",
+                        Long.class,
+                        idClave);
+
+        return cantidad == null ? -1L : cantidad;
     }
 }
