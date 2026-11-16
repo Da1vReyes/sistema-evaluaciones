@@ -252,19 +252,23 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
         assertSame(esperadas.get(1), resultado.get(1));
 
         assertEquals(101L, resultado.get(0).getIdPregunta());
+
         assertEquals(405L, resultado.get(0).getIdOpcionCorrecta());
 
         assertEquals(102L, resultado.get(1).getIdPregunta());
+
         assertEquals(409L, resultado.get(1).getIdOpcionCorrecta());
 
-        // La lista entregada no puede modificarse.
+        // La lista no puede modificarse.
         assertThrows(UnsupportedOperationException.class, () -> resultado.clear());
 
         verify(autorizacion).exigirPermisoCalificarConClave(10L);
 
         verify(claveRepository).buscarPorId(10L);
 
-        verify(validadorCobertura).validarCoberturaSeleccion(10L);
+        // CORRECCION:
+        // Utilizar el metodo exclusivo de calificacion.
+        verify(validadorCobertura).validarCoberturaSeleccionParaCalificacion(10L);
 
         verify(entradaRepository).listarPorClave(10L);
     }
@@ -278,12 +282,15 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
 
         when(claveRepository.buscarPorId(10L)).thenReturn(Optional.of(claveAprobada()));
 
+        // CORRECCION:
+        // Simular la excepcion en el metodo que realmente
+        // utiliza el servicio de calificacion.
         doThrow(
                         new IllegalStateException(
                                 "La clave no cubre exactamente todas "
                                         + "las preguntas de seleccion del formulario"))
                 .when(validadorCobertura)
-                .validarCoberturaSeleccion(10L);
+                .validarCoberturaSeleccionParaCalificacion(10L);
 
         IllegalStateException excepcion =
                 assertThrows(
@@ -294,9 +301,11 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
 
         verify(autorizacion).exigirPermisoCalificarConClave(10L);
 
-        verify(validadorCobertura).validarCoberturaSeleccion(10L);
+        // CORRECCION:
+        // Verificar el metodo correcto.
+        verify(validadorCobertura).validarCoberturaSeleccionParaCalificacion(10L);
 
-        // No se entregan las respuestas.
+        // No deben entregarse respuestas.
         verifyNoInteractions(entradaRepository);
     }
 
@@ -320,7 +329,6 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
 
         verify(autorizacion).exigirPermisoCalificarConClave(10L);
 
-        // No debe consultarse ningun repositorio.
         verifyNoInteractions(claveRepository);
         verifyNoInteractions(entradaRepository);
         verifyNoInteractions(validadorCobertura);
@@ -387,7 +395,7 @@ class ValidacionClaveBFAParaCalificacionServiceTest {
     }
 
     // =====================================================
-    // 15. VALIDAR IDS ANTES DE CONSULTAR ENTRADAS
+    // 15. VALIDAR IDENTIFICADORES ANTES DE CONSULTAR
     // =====================================================
 
     @Test

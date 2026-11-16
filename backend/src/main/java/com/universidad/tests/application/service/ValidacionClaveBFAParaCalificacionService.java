@@ -41,11 +41,11 @@ public class ValidacionClaveBFAParaCalificacionService {
     @Transactional(readOnly = true)
     public VersionClaveBFA obtenerClaveAprobada(Long idClave, Long idVersionFormulario) {
 
-        // Validar los identificadores recibidos.
+        // Validar identificadores.
         validarId(idClave);
         validarId(idVersionFormulario);
 
-        // Exigir autorizacion antes de consultar la clave.
+        // Exigir autorizacion antes de consultar datos.
         autorizacion.exigirPermisoCalificarConClave(idClave);
 
         // Comprobar que la clave exista.
@@ -57,15 +57,14 @@ public class ValidacionClaveBFAParaCalificacionService {
                                         new NoSuchElementException(
                                                 "No existe la clave BFA indicada"));
 
-        // Verificar que pertenezca al formulario solicitado.
+        // Verificar la version del formulario.
         if (!idVersionFormulario.equals(clave.getIdVersionFormulario())) {
 
             throw new IllegalStateException(
                     "La clave BFA no pertenece " + "a la version de formulario indicada");
         }
 
-        // Solo una clave APROBADA puede utilizarse
-        // para generar nuevas calificaciones.
+        // Solo permitir claves aprobadas.
         clave.exigirAptaParaNuevaCalificacion();
 
         return clave;
@@ -80,27 +79,25 @@ public class ValidacionClaveBFAParaCalificacionService {
             Long idClave, Long idVersionFormulario) {
 
         // PASO 1:
-        // Validar identificadores, autorizacion,
-        // formulario y estado de aprobacion.
+        // Verificar permiso, existencia,
+        // compatibilidad y aprobacion.
         obtenerClaveAprobada(idClave, idVersionFormulario);
 
         // PASO 2:
-        // Comprobar que todas las preguntas de seleccion
-        // tengan exactamente su entrada de correccion.
+        // Validar la cobertura utilizando el permiso
+        // especifico de calificacion BFA.
         //
-        // El validador existente exige adicionalmente
-        // permiso de consulta de claves.
-        validadorCobertura.validarCoberturaSeleccion(idClave);
+        // Ya no se exige el permiso administrativo
+        // de consulta de claves.
+        validadorCobertura.validarCoberturaSeleccionParaCalificacion(idClave);
 
         // PASO 3:
-        // Obtener las respuestas correctas registradas
-        // para esta version especifica de la clave.
+        // Recuperar las respuestas correctas
+        // de la version aprobada.
         List<EntradaClaveBFA> entradas = entradaRepository.listarPorClave(idClave);
 
         // PASO 4:
-        // Devolver una copia no modificable.
-        // El consumidor no podra agregar ni eliminar
-        // entradas de la lista recibida.
+        // Devolver una lista no modificable.
         return List.copyOf(entradas);
     }
 
@@ -111,6 +108,7 @@ public class ValidacionClaveBFAParaCalificacionService {
     private void validarId(Long id) {
 
         if (id == null || id <= 0) {
+
             throw new IllegalArgumentException("El identificador debe ser positivo");
         }
     }

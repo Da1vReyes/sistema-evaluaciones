@@ -3,6 +3,7 @@ package com.universidad.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -38,7 +39,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
     @Autowired private JdbcTemplate jdbc;
 
-    // Autorizacion simulada exclusivamente en pruebas.
     @MockitoBean private AutorizacionClaveBFAPort autorizacion;
 
     private Long idTest;
@@ -57,7 +57,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
     @BeforeEach
     void prepararDatosSinteticos() {
 
-        // Nunca ejecutar contra la base principal.
         String base = jdbc.queryForObject("SELECT current_database()", String.class);
 
         if (!"evaluaciones_bfa_test".equals(base)) {
@@ -67,7 +66,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         String codigo = "BFA_CAL_" + UUID.randomUUID().toString().replace("-", "");
 
-        // Crear un test sintetico.
         idTest =
                 insertar(
                         "INSERT INTO test "
@@ -79,7 +77,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         "Prueba de integracion",
                         true);
 
-        // Crear una version de formulario.
         idFormulario =
                 insertar(
                         "INSERT INTO version_formulario "
@@ -91,7 +88,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         "Formulario sintetico",
                         "FUENTE-SINTETICA");
 
-        // Crear clave inicialmente en BORRADOR.
         idClave =
                 insertar(
                         "INSERT INTO version_clave_bfa "
@@ -217,29 +213,25 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         verify(autorizacion).exigirPermisoCalificarConClave(idClave);
 
-        // El registro no debe modificarse.
         assertEquals("APROBADA", estadoEnBaseDeDatos());
 
         assertEquals(EVIDENCIA, evidenciaEnBaseDeDatos());
     }
 
     // =====================================================
-    // 7. OBTENER RESPUESTAS CORRECTAS DESDE POSTGRESQL
+    // 7. RECUPERAR RESPUESTAS CORRECTAS AUTORIZADAS
     // =====================================================
 
     @Test
     void debeEntregarEntradasDeClaveCompletaYAutorizada() {
 
-        // Crear preguntas y opciones reales de prueba.
         prepararPreguntasSeleccion();
-
-        // Registrar entradas usando el servicio existente.
         registrarDosEntradasValidas();
 
-        // Aprobar mediante el servicio real.
+        // Aprobar con la validacion real de cobertura.
         aprobacionService.aprobarClave(idClave, EVIDENCIA);
 
-        // Limpiar las invocaciones de la preparacion.
+        // No contar permisos usados en la preparacion.
         clearInvocations(autorizacion);
 
         List<EntradaClaveBFA> resultado =
@@ -247,7 +239,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         assertEquals(2, resultado.size());
 
-        // Comprobar primera respuesta correcta.
         assertTrue(
                 resultado.stream()
                         .anyMatch(
@@ -256,7 +247,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                                                 && idOpcion1.equals(
                                                         entrada.getIdOpcionCorrecta())));
 
-        // Comprobar segunda respuesta correcta.
         assertTrue(
                 resultado.stream()
                         .anyMatch(
@@ -265,15 +255,17 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                                                 && idOpcion2.equals(
                                                         entrada.getIdOpcionCorrecta())));
 
-        // La lista devuelta no debe poder modificarse.
         assertThrows(UnsupportedOperationException.class, () -> resultado.clear());
 
-        // Verificar permisos exigidos.
-        verify(autorizacion).exigirPermisoCalificarConClave(idClave);
+        // CORRECCION:
+        // El servicio puede verificar el permiso de
+        // calificacion mas de una vez durante el flujo.
+        verify(autorizacion, atLeastOnce()).exigirPermisoCalificarConClave(idClave);
 
-        verify(autorizacion).exigirPermisoConsultarClave(idClave);
+        // El permiso de consulta administrativa no
+        // es necesario para el flujo de calificacion.
+        verify(autorizacion, never()).exigirPermisoConsultarClave(idClave);
 
-        // La clave mantiene su estado y evidencia.
         assertEquals("APROBADA", estadoEnBaseDeDatos());
 
         assertEquals(EVIDENCIA, evidenciaEnBaseDeDatos());
@@ -288,11 +280,11 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         prepararPreguntasSeleccion();
 
-        // Registrar solo una de las dos preguntas.
+        // Solo una de dos respuestas correctas.
         registrarPrimeraEntrada();
 
-        // Simular una aprobacion directa que omitio
-        // la validacion normal de cobertura.
+        // Simular un registro aprobado que no paso
+        // por la validacion del servicio de aprobacion.
         aprobarClaveDirectamente();
 
         IllegalStateException excepcion =
@@ -304,7 +296,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         assertTrue(excepcion.getMessage().contains("La clave no cubre exactamente"));
 
-        // No se modifican los datos registrados.
         assertEquals("APROBADA", estadoEnBaseDeDatos());
 
         assertEquals(1L, contarEntradas());
@@ -339,21 +330,19 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         verify(autorizacion).exigirPermisoCalificarConClave(idClave);
 
-        // No debe iniciarse la validacion de cobertura.
         verify(autorizacion, never()).exigirPermisoConsultarClave(idClave);
 
-        // Los datos deben permanecer intactos.
         assertEquals("APROBADA", estadoEnBaseDeDatos());
 
         assertEquals(2L, contarEntradas());
     }
 
     // =====================================================
-    // 10. RECHAZAR ENTREGA SIN PERMISO DE CONSULTA
+    // 10. CALIFICACION INDEPENDIENTE DE CONSULTA ADMIN
     // =====================================================
 
     @Test
-    void debeDenegarEntregaSinPermisoDeConsulta() {
+    void debePermitirCalificacionSinPermisoDeConsultaAdministrativa() {
 
         prepararPreguntasSeleccion();
         registrarDosEntradasValidas();
@@ -362,24 +351,23 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
         clearInvocations(autorizacion);
 
-        doThrow(new SecurityException("Sin permiso para consultar claves"))
+        // Simular que el componente no tiene permiso
+        // de consulta administrativa de claves.
+        doThrow(new SecurityException("Sin permiso de consulta administrativa"))
                 .when(autorizacion)
                 .exigirPermisoConsultarClave(idClave);
 
-        SecurityException excepcion =
-                assertThrows(
-                        SecurityException.class,
-                        () ->
-                                servicio.obtenerEntradasAprobadasParaCalificacion(
-                                        idClave, idFormulario));
+        // La calificacion tiene un permiso especifico.
+        // No debe depender del permiso administrativo.
+        List<EntradaClaveBFA> resultado =
+                servicio.obtenerEntradasAprobadasParaCalificacion(idClave, idFormulario);
 
-        assertTrue(excepcion.getMessage().contains("Sin permiso para consultar claves"));
+        assertEquals(2, resultado.size());
 
-        verify(autorizacion).exigirPermisoCalificarConClave(idClave);
+        verify(autorizacion, atLeastOnce()).exigirPermisoCalificarConClave(idClave);
 
-        verify(autorizacion).exigirPermisoConsultarClave(idClave);
+        verify(autorizacion, never()).exigirPermisoConsultarClave(idClave);
 
-        // La clave debe seguir aprobada.
         assertEquals("APROBADA", estadoEnBaseDeDatos());
 
         assertEquals(EVIDENCIA, evidenciaEnBaseDeDatos());
@@ -391,7 +379,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
 
     private void prepararPreguntasSeleccion() {
 
-        // Crear subprueba sintetica.
         Long idSubprueba =
                 insertar(
                         "INSERT INTO subprueba "
@@ -403,7 +390,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         "Subprueba sintetica",
                         "Datos de prueba");
 
-        // Crear configuracion de seleccion.
         Long idConfiguracion =
                 insertar(
                         "INSERT INTO configuracion_subprueba "
@@ -417,7 +403,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         "SELECCION",
                         "Instrucciones sinteticas");
 
-        // Pregunta 1.
         idPregunta1 =
                 insertar(
                         "INSERT INTO pregunta "
@@ -430,7 +415,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         1,
                         "Pregunta sintetica uno");
 
-        // Pregunta 2.
         idPregunta2 =
                 insertar(
                         "INSERT INTO pregunta "
@@ -443,7 +427,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         2,
                         "Pregunta sintetica dos");
 
-        // Opcion correcta para pregunta 1.
         idOpcion1 =
                 insertar(
                         "INSERT INTO opcion_respuesta "
@@ -455,7 +438,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         1,
                         "Opcion sintetica uno");
 
-        // Opcion correcta para pregunta 2.
         idOpcion2 =
                 insertar(
                         "INSERT INTO opcion_respuesta "
@@ -482,8 +464,6 @@ class ValidacionClaveBFAParaCalificacionIntegrationTest {
                         new EntradaClaveBFA(null, idClave, idPregunta2, idOpcion2)));
     }
 
-    // Usado para las pruebas anteriores y para simular
-    // una aprobacion sin verificar cobertura.
     private void aprobarClaveDirectamente() {
 
         jdbc.update(
