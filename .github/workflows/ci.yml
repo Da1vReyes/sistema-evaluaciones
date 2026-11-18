@@ -71,6 +71,11 @@ jobs:
           java-version: '17'
           cache: maven
           cache-dependency-path: backend/pom.xml
+      - name: Crear base de pruebas BFA
+        run: |
+          docker exec "${{ job.services.postgres.id }}" \
+            psql -U evaluaciones -d evaluaciones -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE evaluaciones_bfa_test OWNER evaluaciones;"
       - name: Compilar y probar (incluye capas y migraciones)
         run: mvn --batch-mode --file backend/pom.xml verify
   frontend-build:

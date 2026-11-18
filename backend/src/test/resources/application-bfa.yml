@@ -1,0 +1,12 @@
+# Perfil exclusivo de las pruebas de integración de BFA-BE-09.
+# Solo lo activan las clases anotadas con @ActiveProfiles("bfa"); el resto de las pruebas
+# conserva la configuración habitual de src/main/resources/application.yml.
+# Sobrescribe únicamente la base de datos para que las pruebas destructivas de claves no toquen
+# la base principal. Las clases que lo usan comprueban además current_database().
+#
+# Crear la base local una sola vez, con el contenedor de compose.yaml levantado:
+#   docker compose exec db psql -U evaluaciones -d evaluaciones \
+#     -c "CREATE DATABASE evaluaciones_bfa_test OWNER evaluaciones;"
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/evaluaciones_bfa_test
