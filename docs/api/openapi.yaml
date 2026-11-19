@@ -765,6 +765,11 @@ paths:
       description: Crea una VersionFormulario en BORRADOR a partir de la última PUBLICADA. CU-GEN-05. Permiso CONFIGURAR_BFA.
       parameters:
         - $ref: '#/components/parameters/TestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearVersionRequest' }
       responses:
         '201':
           description: Versión creada.
@@ -772,10 +777,16 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VersionFormularioResponse' }
               example: { id: 11, testId: 1, estado: BORRADOR }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404':
           description: TEST_NO_ENCONTRADO.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Ya existe ese código de versión para el test.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -806,6 +817,11 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404':
+          description: Versión o subprueba no encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
           description: VERSION_NO_EDITABLE — la versión no está en BORRADOR.
           content:
@@ -818,7 +834,7 @@ paths:
       tags: [Configuración del test]
       operationId: agregarPregunta
       summary: E27 — Agregar una pregunta
-      description: CU-GEN-06. Permiso CONTENIDO_EDITAR.
+      description: CU-GEN-06. Permiso CONTENIDO_EDITAR. Solo admite versiones en BORRADOR.
       parameters:
         - $ref: '#/components/parameters/VersionFormularioId'
         - $ref: '#/components/parameters/CodigoSubprueba'
@@ -836,6 +852,11 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404':
+          description: Versión, subprueba o configuración no encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
           description: VERSION_NO_EDITABLE — la versión no está en BORRADOR.
           content:
@@ -874,6 +895,11 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404':
+          description: Versión o pregunta no encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
           description: VERSION_NO_EDITABLE — la versión no está en BORRADOR.
           content:
@@ -908,8 +934,18 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404':
+          description: Versión no encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
           description: VERSION_NO_EDITABLE — la versión no está en BORRADOR.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          description: CLAVE_INVALIDA — faltan reactivos cerrados o alguna opción es incorrecta.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -938,6 +974,11 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '409':
+          description: BAREMO_DUPLICADO — ya existe el nombre y la versión.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '422':
           description: BAREMO_INVALIDO — rangos superpuestos o incompletos.
           content:
@@ -951,11 +992,17 @@ paths:
       operationId: publicarVersionFormulario
       summary: E31 — Publicar una versión
       description: >-
-        Publica la versión si está completa (contenido, instrucciones, clave de cada reactivo cerrado y
-        letra de Fluidez Verbal); las anteriores se conservan para los intentos ya iniciados. Sin cuerpo.
+        Publica la versión si está completa (contenido, instrucciones y clave aprobada de cada
+        reactivo cerrado). Fluidez Verbal no utiliza preguntas cerradas; la letra se asigna al iniciar
+        la evaluación, según E3 y E5. Las versiones anteriores se conservan para intentos ya iniciados.
         CU-GEN-05. Permiso CONFIGURAR_BFA.
       parameters:
         - $ref: '#/components/parameters/VersionFormularioId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublicarVersionRequest' }
       responses:
         '200':
           description: Versión publicada.
@@ -963,15 +1010,21 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VersionFormularioResponse' }
               example: { id: 11, estado: PUBLICADA }
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404':
+          description: Versión no encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
           description: VERSION_NO_EDITABLE — la versión no está en BORRADOR.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
         '422':
-          description: VERSION_INCOMPLETA — falta contenido, instrucciones, clave o letra de Fluidez Verbal.
+          description: VERSION_INCOMPLETA — falta contenido, instrucciones o clave aprobada.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -1408,6 +1461,20 @@ components:
         testId: { type: integer, format: int64, example: 1 }
         estado: { type: string, enum: [BORRADOR, PUBLICADA, RETIRADA], example: BORRADOR }
 
+    CrearVersionRequest:
+      type: object
+      required: [codigoVersion, fuenteRef]
+      properties:
+        codigoVersion: { type: string, example: 'v2' }
+        descripcion: { type: string, nullable: true }
+        fuenteRef: { type: string, description: Referencia a la fuente autorizada. }
+
+    PublicarVersionRequest:
+      type: object
+      required: [evidenciaValidacion]
+      properties:
+        evidenciaValidacion: { type: string, description: Referencia a la validación documental. }
+
     ConfiguracionSubpruebaRequest:
       type: object
       properties:
@@ -1444,7 +1511,16 @@ components:
       properties:
         opciones:
           type: array
-          items: { $ref: '#/components/schemas/OpcionRespuesta' }
+          items: { $ref: '#/components/schemas/OpcionVersionadaRequest' }
+
+    OpcionVersionadaRequest:
+      type: object
+      required: [letra, orden]
+      properties:
+        letra: { type: string, example: A }
+        orden: { type: integer, minimum: 1, example: 1 }
+        texto: { type: string, nullable: true }
+        recursoRef: { type: string, nullable: true }
 
     ClaveRequest:
       type: object

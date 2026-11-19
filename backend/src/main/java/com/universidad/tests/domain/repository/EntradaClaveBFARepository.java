@@ -17,4 +17,6 @@ public interface EntradaClaveBFARepository {
     long contarPorClave(Long idClave);
 
     EntradaClaveBFA guardar(EntradaClaveBFA entrada);
+
+    void eliminarEntradasBorrador(Long idClave);
 }

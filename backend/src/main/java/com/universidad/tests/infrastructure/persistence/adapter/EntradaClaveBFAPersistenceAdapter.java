@@ -149,6 +149,21 @@ public class EntradaClaveBFAPersistenceAdapter implements EntradaClaveBFAReposit
         return aDominio(entradaJpaRepository.saveAndFlush(entidad));
     }
 
+    @Override
+    @Transactional
+    public void eliminarEntradasBorrador(Long idClave) {
+        VersionClaveBFAJpaEntity clave =
+                claveJpaRepository
+                        .findById(idClave)
+                        .orElseThrow(
+                                () -> new NoSuchElementException("No existe la clave indicada"));
+        if (clave.getEstado() != EstadoVersionClaveBFA.BORRADOR) {
+            throw new IllegalStateException("Solo se puede reemplazar una clave en BORRADOR");
+        }
+        entradaJpaRepository.deleteAll(entradaJpaRepository.findByClave_IdClave(idClave));
+        entradaJpaRepository.flush();
+    }
+
     private EntradaClaveBFA aDominio(EntradaClaveBFAJpaEntity entidad) {
 
         return new EntradaClaveBFA(

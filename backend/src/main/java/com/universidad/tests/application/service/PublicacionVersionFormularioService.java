@@ -1,6 +1,8 @@
 package com.universidad.tests.application.service;
 
 import com.universidad.tests.domain.model.ConfiguracionSubprueba;
+import com.universidad.tests.domain.model.EntradaClaveBFA;
+import com.universidad.tests.domain.model.EstadoVersionClaveBFA;
 import com.universidad.tests.domain.model.EstadoVersionFormulario;
 import com.universidad.tests.domain.model.Pregunta;
 import com.universidad.tests.domain.model.Subprueba;
@@ -8,9 +10,11 @@ import com.universidad.tests.domain.model.TipoRespuesta;
 import com.universidad.tests.domain.model.VersionFormulario;
 import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 import com.universidad.tests.domain.repository.*;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +26,8 @@ public class PublicacionVersionFormularioService {
     private final SubpruebaRepository subpruebaRepository;
     private final PreguntaRepository preguntaRepository;
     private final OpcionRespuestaRepository opcionRepository;
+    private final VersionClaveBFARepository claveRepository;
+    private final EntradaClaveBFARepository entradaClaveRepository;
     private final AutorizacionContenidoPort autorizacion;
 
     public PublicacionVersionFormularioService(
@@ -30,6 +36,8 @@ public class PublicacionVersionFormularioService {
             SubpruebaRepository subpruebaRepository,
             PreguntaRepository preguntaRepository,
             OpcionRespuestaRepository opcionRepository,
+            VersionClaveBFARepository claveRepository,
+            EntradaClaveBFARepository entradaClaveRepository,
             AutorizacionContenidoPort autorizacion) {
 
         this.versionRepository = versionRepository;
@@ -37,6 +45,8 @@ public class PublicacionVersionFormularioService {
         this.subpruebaRepository = subpruebaRepository;
         this.preguntaRepository = preguntaRepository;
         this.opcionRepository = opcionRepository;
+        this.claveRepository = claveRepository;
+        this.entradaClaveRepository = entradaClaveRepository;
         this.autorizacion = autorizacion;
     }
 
@@ -90,19 +100,14 @@ public class PublicacionVersionFormularioService {
     }
 
     private void validarContenido(VersionFormulario version) {
-
         Long idVersion = version.getIdVersionFormulario();
-
         List<ConfiguracionSubprueba> configuraciones =
                 configuracionRepository.listarPorVersion(idVersion);
-
         if (configuraciones.isEmpty()) {
-
-            throw new IllegalStateException("No se puede publicar una version sin subpruebas");
+            throw new VersionIncompletaException("No se puede publicar una version sin subpruebas");
         }
-
+        Set<Long> preguntasCerradas = new HashSet<>();
         for (ConfiguracionSubprueba configuracion : configuraciones) {
-
             Subprueba subprueba =
                     subpruebaRepository
                             .buscarPorId(configuracion.getIdSubprueba())
@@ -111,36 +116,60 @@ public class PublicacionVersionFormularioService {
                                             new NoSuchElementException(
                                                     "No existe una subprueba de la configuracion"));
 
-            // Comprobar que pertenece al mismo test.
             if (!Objects.equals(subprueba.getIdTest(), version.getIdTest())) {
-
-                throw new IllegalStateException("Una subprueba pertenece a otro test");
+                throw new VersionIncompletaException("Una subprueba pertenece a otro test");
             }
-
-            // Recuperar preguntas de la configuracion.
+            if (configuracion.getInstruccionesRef() == null
+                    || configuracion.getInstruccionesRef().isBlank()) {
+                throw new VersionIncompletaException("Faltan instrucciones de la subprueba");
+            }
+            if ("FV".equalsIgnoreCase(subprueba.getCodigo())
+                    && (configuracion.getTipoRespuesta() != TipoRespuesta.TEXTO_LIBRE
+                            || configuracion.getMaximoEntradas() == null)) {
+                throw new VersionIncompletaException("La configuracion de FV esta incompleta");
+            }
             List<Pregunta> preguntas =
                     preguntaRepository.listarPorConfiguracion(
                             configuracion.getIdConfiguracionSubprueba());
-
-            if (preguntas.isEmpty()) {
-
-                throw new IllegalStateException(
+            if (preguntas.isEmpty()
+                    && configuracion.getTipoRespuesta() == TipoRespuesta.SELECCION) {
+                throw new VersionIncompletaException(
                         "La subprueba " + subprueba.getCodigo() + " no contiene preguntas");
             }
-
-            // Las preguntas de seleccion necesitan opciones.
             if (configuracion.getTipoRespuesta() == TipoRespuesta.SELECCION) {
-
                 for (Pregunta pregunta : preguntas) {
-
-                    if (opcionRepository.listarPorPregunta(pregunta.getIdPregunta()).isEmpty()) {
-
-                        throw new IllegalStateException(
+                    preguntasCerradas.add(pregunta.getIdPregunta());
+                    int cantidad =
+                            opcionRepository.listarPorPregunta(pregunta.getIdPregunta()).size();
+                    if (cantidad == 0
+                            || (configuracion.getOpcionesEsperadas() != null
+                                    && cantidad != configuracion.getOpcionesEsperadas())) {
+                        throw new VersionIncompletaException(
                                 "La pregunta "
                                         + pregunta.getNumeroVisible()
-                                        + " no contiene opciones");
+                                        + " no tiene las opciones configuradas");
                     }
                 }
+            }
+        }
+        if (!preguntasCerradas.isEmpty()) {
+            boolean claveCompleta =
+                    claveRepository.listarPorVersionFormulario(idVersion).stream()
+                            .filter(c -> c.getEstado() == EstadoVersionClaveBFA.APROBADA)
+                            .anyMatch(
+                                    c -> {
+                                        List<EntradaClaveBFA> entradas =
+                                                entradaClaveRepository.listarPorClave(
+                                                        c.getIdClave());
+                                        Set<Long> cubiertas = new HashSet<>();
+                                        for (EntradaClaveBFA entrada : entradas) {
+                                            cubiertas.add(entrada.getIdPregunta());
+                                        }
+                                        return entradas.size() == preguntasCerradas.size()
+                                                && cubiertas.equals(preguntasCerradas);
+                                    });
+            if (!claveCompleta) {
+                throw new VersionIncompletaException("Falta una clave BFA aprobada y completa");
             }
         }
     }
@@ -160,6 +189,12 @@ public class PublicacionVersionFormularioService {
         if (idVersionFormulario == null || idVersionFormulario <= 0) {
 
             throw new IllegalArgumentException("El ID de version debe ser positivo");
+        }
+    }
+
+    public static class VersionIncompletaException extends IllegalStateException {
+        public VersionIncompletaException(String mensaje) {
+            super(mensaje);
         }
     }
 }

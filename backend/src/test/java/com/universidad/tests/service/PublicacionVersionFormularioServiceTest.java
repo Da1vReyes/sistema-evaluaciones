@@ -29,6 +29,10 @@ class PublicacionVersionFormularioServiceTest {
 
     @Mock private OpcionRespuestaRepository opcionRepository;
 
+    @Mock private VersionClaveBFARepository claveRepository;
+
+    @Mock private EntradaClaveBFARepository entradaClaveRepository;
+
     @Mock private AutorizacionContenidoPort autorizacion;
 
     @InjectMocks private PublicacionVersionFormularioService servicio;
@@ -116,6 +120,8 @@ class PublicacionVersionFormularioServiceTest {
 
         when(subprueba.getIdTest()).thenReturn(2L);
 
+        when(configuracion.getInstruccionesRef()).thenReturn("instrucciones");
+
         when(configuracion.getIdConfiguracionSubprueba()).thenReturn(4L);
 
         when(preguntaRepository.listarPorConfiguracion(4L)).thenReturn(List.of(pregunta));
@@ -142,6 +148,8 @@ class PublicacionVersionFormularioServiceTest {
         Pregunta pregunta = mock(Pregunta.class);
 
         OpcionRespuesta opcion = mock(OpcionRespuesta.class);
+        VersionClaveBFA clave = mock(VersionClaveBFA.class);
+        EntradaClaveBFA entrada = mock(EntradaClaveBFA.class);
 
         when(versionRepository.buscarPorId(5L)).thenReturn(Optional.of(version));
 
@@ -153,6 +161,8 @@ class PublicacionVersionFormularioServiceTest {
 
         when(subprueba.getIdTest()).thenReturn(2L);
 
+        when(configuracion.getInstruccionesRef()).thenReturn("instrucciones");
+
         when(configuracion.getIdConfiguracionSubprueba()).thenReturn(4L);
 
         when(preguntaRepository.listarPorConfiguracion(4L)).thenReturn(List.of(pregunta));
@@ -162,6 +172,13 @@ class PublicacionVersionFormularioServiceTest {
         when(pregunta.getIdPregunta()).thenReturn(6L);
 
         when(opcionRepository.listarPorPregunta(6L)).thenReturn(List.of(opcion));
+        when(configuracion.getOpcionesEsperadas()).thenReturn(1);
+
+        when(claveRepository.listarPorVersionFormulario(5L)).thenReturn(List.of(clave));
+        when(clave.getEstado()).thenReturn(EstadoVersionClaveBFA.APROBADA);
+        when(clave.getIdClave()).thenReturn(8L);
+        when(entradaClaveRepository.listarPorClave(8L)).thenReturn(List.of(entrada));
+        when(entrada.getIdPregunta()).thenReturn(6L);
 
         when(versionRepository.guardar(version)).thenReturn(version);
 
@@ -175,6 +192,29 @@ class PublicacionVersionFormularioServiceTest {
 
         verify(autorizacion).exigirPermisoPublicar(5L);
         verify(versionRepository).guardar(version);
+    }
+
+    @Test
+    void fluidezVerbalNoRequierePreguntasNiClaveCerrada() {
+        VersionFormulario version = crearVersionBorrador();
+        ConfiguracionSubprueba configuracion = mock(ConfiguracionSubprueba.class);
+        Subprueba subprueba = mock(Subprueba.class);
+        when(versionRepository.buscarPorId(5L)).thenReturn(Optional.of(version));
+        when(configuracionRepository.listarPorVersion(5L)).thenReturn(List.of(configuracion));
+        when(configuracion.getIdSubprueba()).thenReturn(3L);
+        when(configuracion.getIdConfiguracionSubprueba()).thenReturn(4L);
+        when(configuracion.getInstruccionesRef()).thenReturn("Palabras con la letra asignada");
+        when(configuracion.getTipoRespuesta()).thenReturn(TipoRespuesta.TEXTO_LIBRE);
+        when(configuracion.getMaximoEntradas()).thenReturn(75);
+        when(subpruebaRepository.buscarPorId(3L)).thenReturn(Optional.of(subprueba));
+        when(subprueba.getIdTest()).thenReturn(2L);
+        when(subprueba.getCodigo()).thenReturn("FV");
+        when(preguntaRepository.listarPorConfiguracion(4L)).thenReturn(List.of());
+        when(versionRepository.guardar(version)).thenReturn(version);
+
+        assertEquals(
+                EstadoVersionFormulario.PUBLICADA, servicio.publicar(5L, "ACTA-FV").getEstado());
+        verifyNoInteractions(claveRepository, entradaClaveRepository);
     }
 
     @Test
