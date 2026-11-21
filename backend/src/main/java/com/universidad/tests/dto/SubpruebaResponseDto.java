@@ -14,7 +14,8 @@ public record SubpruebaResponseDto(
         String instrucciones,
         boolean permitirRetroceso,
         String letraInicial,
-        Integer maximoEntradas) {
+        Integer maximoEntradas,
+        Instant cerradaEn) {
     public SubpruebaResponseDto(
             String codigo,
             String nombre,
@@ -37,6 +38,7 @@ public record SubpruebaResponseDto(
                 finLimite,
                 instrucciones,
                 permitirRetroceso,
+                null,
                 null,
                 null);
     }

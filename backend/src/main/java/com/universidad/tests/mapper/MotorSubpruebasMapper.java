@@ -54,7 +54,8 @@ public class MotorSubpruebasMapper {
                 subprueba.getInstrucciones(),
                 subprueba.isPermitirRetroceso(),
                 subprueba.getLetraInicial(),
-                subprueba.esFluidezVerbal() ? subprueba.getMaximoEntradas() : null);
+                subprueba.esFluidezVerbal() ? subprueba.getMaximoEntradas() : null,
+                subprueba.getFechaCierre());
     }
 
     public PreguntasSubpruebaResponseDto toPreguntasSubpruebaDto(

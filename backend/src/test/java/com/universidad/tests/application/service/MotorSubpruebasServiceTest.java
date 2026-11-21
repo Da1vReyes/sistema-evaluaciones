@@ -429,7 +429,7 @@ class MotorSubpruebasServiceTest {
         SubpruebaResponseDto result = service.iniciarSubprueba("EV-01", "VOC2");
 
         assertThat(voc1.getEstado()).isEqualTo(EstadoSubprueba.CERRADA);
-        assertThat(voc1.getFechaCierre()).isEqualTo(baseTime);
+        assertThat(voc1.getFechaCierre()).isEqualTo(voc1.getFechaFinLimite());
         assertThat(result.codigo()).isEqualTo("VOC2");
         assertThat(result.estado()).isEqualTo("ACTIVA");
         verify(evaluacionRepository).guardarSubprueba(voc1);

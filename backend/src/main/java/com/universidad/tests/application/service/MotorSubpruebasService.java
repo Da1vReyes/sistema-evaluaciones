@@ -76,11 +76,16 @@ public class MotorSubpruebasService {
     private void cerrarVencidas(Evaluacion evaluacion, Instant ahora) {
         for (EvaluacionSubprueba sub : evaluacion.getSubpruebas()) {
             if (sub.getEstado() == EstadoSubprueba.ACTIVA && sub.haExpirado(ahora)) {
-                sub.cerrar(ahora);
-                evaluacionRepository.guardarSubprueba(sub);
-                solicitudes.registrar(sub.getId());
+                cerrarPorVencimiento(sub);
             }
         }
+    }
+
+    private void cerrarPorVencimiento(EvaluacionSubprueba subprueba) {
+        // El cierre oficial es el límite persistido, aunque se detecte después del vencimiento.
+        subprueba.cerrar(subprueba.getFechaFinLimite());
+        evaluacionRepository.guardarSubprueba(subprueba);
+        solicitudes.registrar(subprueba.getId());
     }
 
     public SubpruebaResponseDto iniciarSubprueba(String evaluacionId, String subpruebaCodigo) {
@@ -123,9 +128,7 @@ public class MotorSubpruebasService {
             throw new SubpruebaNoActivaException("La evaluación no está en curso.");
 
         if (subprueba.getEstado() == EstadoSubprueba.ACTIVA && subprueba.haExpirado(ahora)) {
-            subprueba.cerrar(ahora);
-            evaluacionRepository.guardarSubprueba(subprueba);
-            solicitudes.registrar(subprueba.getId());
+            cerrarPorVencimiento(subprueba);
             throw new SubpruebaNoActivaException(
                     "El tiempo de la subprueba " + subpruebaCodigo + " ha finalizado.");
         }
@@ -163,9 +166,7 @@ public class MotorSubpruebasService {
         }
 
         if (subprueba.haExpirado(ahora)) {
-            subprueba.cerrar(ahora);
-            evaluacionRepository.guardarSubprueba(subprueba);
-            solicitudes.registrar(subprueba.getId());
+            cerrarPorVencimiento(subprueba);
             throw new TiempoAgotadoException(
                     "El tiempo límite para la subprueba " + subpruebaCodigo + " ha finalizado.");
         }
