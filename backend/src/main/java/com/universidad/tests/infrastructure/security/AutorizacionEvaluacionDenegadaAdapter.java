@@ -8,7 +8,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 /** Sin GEN-06 nunca se interpreta un encabezado de cliente como autorización. */
 @Component
-@org.springframework.context.annotation.Profile("!seguridad-integrada")
+@org.springframework.context.annotation.Profile(
+        "!seguridad-integrada & !desarrollo-sin-autenticacion")
 public class AutorizacionEvaluacionDenegadaAdapter implements AutorizacionEvaluacionPort {
     public void exigirAcceso(String evaluacionId) {
         var contexto = RequestContextHolder.getRequestAttributes();
