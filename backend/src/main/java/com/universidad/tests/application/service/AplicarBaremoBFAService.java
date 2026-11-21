@@ -16,30 +16,30 @@ public class AplicarBaremoBFAService {
     private final ConversionPercentilBFAService conversion;
 
     public AplicarBaremoBFAService(
-        ConsultaBaremoBFAParaConversionPort consultaBaremos,
-        ConversionPercentilBFAService conversion) {
+            ConsultaBaremoBFAParaConversionPort consultaBaremos,
+            ConversionPercentilBFAService conversion) {
         this.consultaBaremos = Objects.requireNonNull(consultaBaremos);
         this.conversion = Objects.requireNonNull(conversion);
     }
 
     public ResultadoAplicacion aplicar(
-        long versionFormularioId,
-        String versionReglas,
-        String codigoFactor,
-        Integer puntuacionDirecta) {
+            long versionFormularioId,
+            String versionReglas,
+            String codigoFactor,
+            Integer puntuacionDirecta) {
         ResultadoRevision revision =
-            aplicarRevision(
-                versionFormularioId,
-                versionReglas,
-                Collections.singletonMap(codigoFactor, puntuacionDirecta));
+                aplicarRevision(
+                        versionFormularioId,
+                        versionReglas,
+                        Collections.singletonMap(codigoFactor, puntuacionDirecta));
 
         return new ResultadoAplicacion(revision.idBaremo(), revision.factores().get(codigoFactor));
     }
 
     public ResultadoRevision aplicarRevision(
-        long versionFormularioId,
-        String versionReglas,
-        Map<String, Integer> puntuacionesPorFactor) {
+            long versionFormularioId,
+            String versionReglas,
+            Map<String, Integer> puntuacionesPorFactor) {
         Objects.requireNonNull(puntuacionesPorFactor, "Las puntuaciones son obligatorias");
 
         if (puntuacionesPorFactor.values().stream().noneMatch(Objects::nonNull)) {
@@ -47,48 +47,48 @@ public class AplicarBaremoBFAService {
         }
 
         List<BaremoCandidato> candidatos =
-            consultaBaremos.buscarAprobadosCompatibles(versionFormularioId, versionReglas);
+                consultaBaremos.buscarAprobadosCompatibles(versionFormularioId, versionReglas);
 
         if (candidatos.isEmpty()) {
             return convertirFactores(
-                puntuacionesPorFactor,
-                null,
-                "No existe un baremo aprobado y compatible con el formulario y las reglas.");
+                    puntuacionesPorFactor,
+                    null,
+                    "No existe un baremo aprobado y compatible con el formulario y las reglas.");
         }
 
         if (candidatos.size() > 1) {
             return convertirFactores(
-                puntuacionesPorFactor,
-                null,
-                "Hay más de un baremo aprobado y compatible para este cálculo.");
+                    puntuacionesPorFactor,
+                    null,
+                    "Hay más de un baremo aprobado y compatible para este cálculo.");
         }
 
         return convertirFactores(puntuacionesPorFactor, candidatos.get(0), null);
     }
 
     private ResultadoRevision convertirFactores(
-        Map<String, Integer> puntuacionesPorFactor,
-        BaremoCandidato baremo,
-        String motivoSinBaremo) {
+            Map<String, Integer> puntuacionesPorFactor,
+            BaremoCandidato baremo,
+            String motivoSinBaremo) {
         Map<String, ResultadoConversion> resultados = new HashMap<>();
 
         puntuacionesPorFactor.forEach(
-            (factor, puntuacion) -> {
-                ResultadoConversion resultado;
-                if (puntuacion == null) {
-                    resultado = conversion.convertir(factor, null, List.of());
-                } else if (baremo == null) {
-                    resultado =
-                        new ResultadoConversion(
-                            null,
-                            null,
-                            EstadoNormativo.SIN_BAREMO_VALIDADO,
-                            motivoSinBaremo);
-                } else {
-                    resultado = conversion.convertir(factor, puntuacion, baremo.rangos());
-                }
-                resultados.put(factor, resultado);
-            });
+                (factor, puntuacion) -> {
+                    ResultadoConversion resultado;
+                    if (puntuacion == null) {
+                        resultado = conversion.convertir(factor, null, List.of());
+                    } else if (baremo == null) {
+                        resultado =
+                                new ResultadoConversion(
+                                        null,
+                                        null,
+                                        EstadoNormativo.SIN_BAREMO_VALIDADO,
+                                        motivoSinBaremo);
+                    } else {
+                        resultado = conversion.convertir(factor, puntuacion, baremo.rangos());
+                    }
+                    resultados.put(factor, resultado);
+                });
 
         return new ResultadoRevision(baremo == null ? null : baremo.idBaremo(), resultados);
     }

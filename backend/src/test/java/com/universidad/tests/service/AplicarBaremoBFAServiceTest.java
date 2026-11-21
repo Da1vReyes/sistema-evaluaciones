@@ -30,18 +30,18 @@ class AplicarBaremoBFAServiceTest {
     @Test
     void consultaLaEdicionYLasReglasYConservaLosIdsDeLaConversion() {
         ConsultaBaremoBFAParaConversionPort consulta =
-            (versionFormularioId, versionReglas) -> {
-                assertEquals(VERSION_FORMULARIO, versionFormularioId);
-                assertEquals(VERSION_REGLAS, versionReglas);
-                return List.of(
-                    new BaremoCandidato(
-                        21L, List.of(new RangoCandidato(31L, FACTOR, 40, 3, 5))));
-            };
+                (versionFormularioId, versionReglas) -> {
+                    assertEquals(VERSION_FORMULARIO, versionFormularioId);
+                    assertEquals(VERSION_REGLAS, versionReglas);
+                    return List.of(
+                            new BaremoCandidato(
+                                    21L, List.of(new RangoCandidato(31L, FACTOR, 40, 3, 5))));
+                };
 
         AplicarBaremoBFAService servicio = new AplicarBaremoBFAService(consulta, conversion);
 
         ResultadoAplicacion resultado =
-            servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
+                servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
 
         assertEquals(21L, resultado.idBaremo());
         assertEquals(31L, resultado.conversion().idRango());
@@ -52,10 +52,10 @@ class AplicarBaremoBFAServiceTest {
     @Test
     void devuelveSinBaremoValidadoCuandoNoHayCandidatos() {
         AplicarBaremoBFAService servicio =
-            new AplicarBaremoBFAService((formulario, reglas) -> List.of(), conversion);
+                new AplicarBaremoBFAService((formulario, reglas) -> List.of(), conversion);
 
         ResultadoAplicacion resultado =
-            servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
+                servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
 
         assertNull(resultado.idBaremo());
         assertNull(resultado.conversion().idRango());
@@ -68,38 +68,38 @@ class AplicarBaremoBFAServiceTest {
     void dejaLaConversionPendienteDeSeleccionCuandoHayVariosBaremos() {
         List<RangoCandidato> rangos = List.of(new RangoCandidato(31L, FACTOR, 40, 3, 5));
         AplicarBaremoBFAService servicio =
-            new AplicarBaremoBFAService(
-                (formulario, reglas) ->
-                    List.of(
-                        new BaremoCandidato(21L, rangos),
-                        new BaremoCandidato(
-                            22L,
-                            List.of(
-                                new RangoCandidato(
-                                    32L, FACTOR, 60, 3, 5)))),
-                conversion);
+                new AplicarBaremoBFAService(
+                        (formulario, reglas) ->
+                                List.of(
+                                        new BaremoCandidato(21L, rangos),
+                                        new BaremoCandidato(
+                                                22L,
+                                                List.of(
+                                                        new RangoCandidato(
+                                                                32L, FACTOR, 60, 3, 5)))),
+                        conversion);
 
         ResultadoAplicacion resultado =
-            servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
+                servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
 
         assertNull(resultado.idBaremo());
         assertNull(resultado.conversion().idRango());
         assertNull(resultado.conversion().percentil());
         assertEquals(EstadoNormativo.SIN_BAREMO_VALIDADO, resultado.conversion().estadoNormativo());
         assertEquals(
-            "Hay más de un baremo aprobado y compatible para este cálculo.",
-            resultado.conversion().motivo());
+                "Hay más de un baremo aprobado y compatible para este cálculo.",
+                resultado.conversion().motivo());
     }
 
     @Test
     void conservaElBaremoCuandoElFactorNoTieneRangosAplicables() {
         AplicarBaremoBFAService servicio =
-            new AplicarBaremoBFAService(
-                (formulario, reglas) -> List.of(new BaremoCandidato(21L, List.of())),
-                conversion);
+                new AplicarBaremoBFAService(
+                        (formulario, reglas) -> List.of(new BaremoCandidato(21L, List.of())),
+                        conversion);
 
         ResultadoAplicacion resultado =
-            servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
+                servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, 5);
 
         assertEquals(21L, resultado.idBaremo());
         assertNull(resultado.conversion().idRango());
@@ -110,13 +110,13 @@ class AplicarBaremoBFAServiceTest {
     @Test
     void omiteLaConsultaCuandoElFactorNoTienePuntuacionDirecta() {
         AplicarBaremoBFAService servicio =
-            new AplicarBaremoBFAService(
-                (formulario, reglas) ->
-                    fail("Se consultaron baremos para un factor sin puntuación."),
-                conversion);
+                new AplicarBaremoBFAService(
+                        (formulario, reglas) ->
+                                fail("Se consultaron baremos para un factor sin puntuación."),
+                        conversion);
 
         ResultadoAplicacion resultado =
-            servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, null);
+                servicio.aplicar(VERSION_FORMULARIO, VERSION_REGLAS, FACTOR, null);
 
         assertNull(resultado.idBaremo());
         assertNull(resultado.conversion().percentil());
@@ -127,18 +127,18 @@ class AplicarBaremoBFAServiceTest {
     void consultaUnaSolaVezYUsaElMismoBaremoParaTodaLaRevision() {
         AtomicInteger consultas = new AtomicInteger();
         AplicarBaremoBFAService servicio =
-            new AplicarBaremoBFAService(
-                (formulario, reglas) -> {
-                    consultas.incrementAndGet();
-                    return List.of(
-                        new BaremoCandidato(
-                            21L,
-                            List.of(
-                                new RangoCandidato(31L, FACTOR, 40, 3, 5),
-                                new RangoCandidato(
-                                    32L, "FACTOR_B", 70, 7, 9))));
-                },
-                conversion);
+                new AplicarBaremoBFAService(
+                        (formulario, reglas) -> {
+                            consultas.incrementAndGet();
+                            return List.of(
+                                    new BaremoCandidato(
+                                            21L,
+                                            List.of(
+                                                    new RangoCandidato(31L, FACTOR, 40, 3, 5),
+                                                    new RangoCandidato(
+                                                            32L, "FACTOR_B", 70, 7, 9))));
+                        },
+                        conversion);
 
         Map<String, Integer> puntuaciones = new HashMap<>();
         puntuaciones.put(FACTOR, 5);
@@ -147,7 +147,7 @@ class AplicarBaremoBFAServiceTest {
         puntuaciones.put("FACTOR_D", null);
 
         ResultadoRevision resultado =
-            servicio.aplicarRevision(VERSION_FORMULARIO, VERSION_REGLAS, puntuaciones);
+                servicio.aplicarRevision(VERSION_FORMULARIO, VERSION_REGLAS, puntuaciones);
 
         assertEquals(1, consultas.get());
         assertEquals(21L, resultado.idBaremo());
@@ -156,30 +156,30 @@ class AplicarBaremoBFAServiceTest {
         assertEquals(32L, resultado.factores().get("FACTOR_B").idRango());
         assertEquals(70, resultado.factores().get("FACTOR_B").percentil());
         assertEquals(
-            EstadoNormativo.SIN_COINCIDENCIA,
-            resultado.factores().get("FACTOR_C").estadoNormativo());
+                EstadoNormativo.SIN_COINCIDENCIA,
+                resultado.factores().get("FACTOR_C").estadoNormativo());
         assertNull(resultado.factores().get("FACTOR_C").percentil());
         assertEquals(
-            EstadoNormativo.NO_APLICA, resultado.factores().get("FACTOR_D").estadoNormativo());
+                EstadoNormativo.NO_APLICA, resultado.factores().get("FACTOR_D").estadoNormativo());
     }
 
     @Test
     void distingueUnFactorSinPuntuacionCuandoLaRevisionNoTieneBaremoValidado() {
         AplicarBaremoBFAService servicio =
-            new AplicarBaremoBFAService((formulario, reglas) -> List.of(), conversion);
+                new AplicarBaremoBFAService((formulario, reglas) -> List.of(), conversion);
         Map<String, Integer> puntuaciones = new HashMap<>();
         puntuaciones.put(FACTOR, 5);
         puntuaciones.put("FACTOR_B", null);
 
         ResultadoRevision resultado =
-            servicio.aplicarRevision(VERSION_FORMULARIO, VERSION_REGLAS, puntuaciones);
+                servicio.aplicarRevision(VERSION_FORMULARIO, VERSION_REGLAS, puntuaciones);
 
         assertNull(resultado.idBaremo());
         assertEquals(
-            EstadoNormativo.SIN_BAREMO_VALIDADO,
-            resultado.factores().get(FACTOR).estadoNormativo());
+                EstadoNormativo.SIN_BAREMO_VALIDADO,
+                resultado.factores().get(FACTOR).estadoNormativo());
         assertNull(resultado.factores().get(FACTOR).percentil());
         assertEquals(
-            EstadoNormativo.NO_APLICA, resultado.factores().get("FACTOR_B").estadoNormativo());
+                EstadoNormativo.NO_APLICA, resultado.factores().get("FACTOR_B").estadoNormativo());
     }
 }
