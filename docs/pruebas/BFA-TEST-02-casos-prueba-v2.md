@@ -1,7 +1,7 @@
 # BFA-TEST-02 — Casos de prueba: cálculo de puntuaciones y baremos
 
 - **Archivo:** `BFA-TEST-02-casos-prueba-v2.md`
-- **Versión:** v2, 2026-11-21: matriz del alcance del PR #50 (claves) y casos nuevos TC-017 a TC-027. v1 (2026-11-05) se conserva tal cual más abajo.
+- **Versión:** v2, 2026-11-21 (actualizada el 23-nov con el PR #64): matriz del alcance del PR #50 (claves) y casos nuevos TC-017 a TC-027. v1 (2026-11-05) se conserva tal cual más abajo.
 - **Tarea ClickUp:** [BFA-TEST-02](https://app.clickup.com/t/86bcw9z3k), estado **Open**, vence 2026-11-29, prioridad alta.
 - **Responsable:** Francisco Israel ferrufino James.
 - **Alcance de esta entrega:** diseño documental de casos únicamente. No se ejecutaron pruebas, no se modificó código ni ClickUp, no se publicó nada en GitHub y no se asignó `testing-ok`.
@@ -9,6 +9,7 @@
 
 ## Historial de cambios v1 → v2
 
+- 23-nov: se agrega la sección «Revisión de fórmulas del PR #64 (BFA-BE-08)», que es la prioridad indicada por Nelson: comparación de fórmulas, ejecución de TC-001, 003 y 004 sobre el #64 con un archivo de verificación de Testing, y consultas C-1 a C-5.
 - Se agrega la sección «Alcance actual del PR #50 (v2)», que es el primer entregable pedido el 17-nov: qué trae el PR #50 (HEAD `36e2b19`), una matriz de BE09-CA01 a CA08 frente al código y las pruebas del PR, los casos nuevos TC-017 a TC-027 y los bloqueos B-1 a B-12.
 - Se actualizan las filas BE09 de la matriz de cobertura con los casos nuevos.
 - No cambia ningún caso de v1 (TC-001 a 016): conservan su redacción, su autoría y su estado PENDIENTE DE EJECUCIÓN.
@@ -725,6 +726,69 @@ Los números de PR/SHA son PENDIENTES; no completar con valores inventados. Cada
 **Documentación utilizada:** BFA-TEST-02; BFA-BE-08/09/10; Manual de Testing; Plan operativo.
 
 **Registro de ejecución:** Sin registros.
+
+## Revisión de fórmulas del PR #64 (BFA-BE-08) — prioridad del 23-nov
+
+> Lo pidió Nelson el 23-nov: priorizar las fórmulas del PR #64, ejecutar los casos aplicables de N1 y su piso cero, compuestos, parciales y datos faltantes con resultados calculados aparte, y dar conformidad **solo sobre lo probado**. Baremos, persistencia e integración completa quedan para sus propias entregas, y la tarea no se cierra por este PR.
+
+### Identificación
+
+| Dato | Valor |
+| --- | --- |
+| PR | [#64](https://github.com/Nell16/sistema-evaluaciones/pull/64), BFA-BE-08 «Implementar contrato TestEvaluator y evaluador psicométrico BFA» |
+| HEAD | `9b1ad73d40f369239d3ae37cbd761eb777ae426f` (20-nov, ya sincronizado con `main` `ef0317e`) |
+| SHA combinado probado (`pull/64/merge`) | `32e5a41` (merge de `9b1ad73` sobre `main` `ef69e2e`), 23-nov. Pendiente de confirmar con Kisnner. |
+| Alcance del PR | 9 archivos y 532 líneas: `TestEvaluator`, `TestEvaluatorRegistry`, `ResultadoEvaluacion`, `FactorCalculado`, `BfaTestEvaluator`, `ConsolidadorCompuestosBfa`, `EvaluatorConfiguration` y 2 clases de prueba (7 pruebas). Sin endpoints, sin base de datos, sin baremos. |
+| Método | Pruebas del dominio y del evaluador. Testing agrega un archivo propio, [`PR64VerificacionTestingTest.java`](../evidencias/BFA-TEST-02/PR64VerificacionTestingTest.java), con 14 verificaciones y valores calculados a mano. Se copia **solo en una copia aparte** de `pull/64/merge`; no forma parte del PR (mismo método que BFA-TEST-01 con el PR #45). |
+
+### Fórmulas: documento frente a código
+
+Cálculo independiente con el fixture de TC-003: CV=10, VOC1=7, VOC2=5, FV=4, S1=6+4=10, S2=8−2=6, R1=5, R2=7, N1=10, N2=8+9=17.
+
+| Resultado | Fórmula (DOC-02 §2.4-2.5) | Código del PR #64 | Esperado | ¿Coincide la fórmula? |
+| --- | --- | --- | --- | --- |
+| VOCT | VOC1 + VOC2 | `agregar(VOCT, VOC1, VOC2)` | 12 | Sí |
+| ST | S1 + S2 | `agregar(ST, S1, S2)` | 16 | Sí |
+| RT | R1 + R2 | `agregar(RT, R1, R2)` | 12 | Sí |
+| NT | N1 + N2 | `agregar(NT, N1, N2)` | 27 | Sí |
+| EIV | 2·CV + VOCT + FV | `agregarPonderado(EIV, CV·2, VOCT·1, FV·1)` | 36 | Sí |
+| EIC | 2·RT + ST + NT | `agregarPonderado(EIC, RT·2, ST·1, NT·1)` | 67 | Sí |
+| EIG | EIV + EIC | `agregar(EIG, EIV, EIC)` | 103 | Sí |
+| AE | 2·RT + CV + VOCT | `agregarPonderado(AE, RT·2, CV·1, VOCT·1)` | 46 | Sí |
+| N1 | max(0, (aciertos A + B) − (errores A + B)) | `calcularN1(aA, eA, aB, eB)` | A=10, B=0, C=4 | Sí |
+| S2 | max(0, aciertos − errores) | **No está en el PR**: S2 llega ya calculado | 6 | No aplica (C-2) |
+| S1, N2 | Suma de sus dos sub-bloques | **No está en el PR**: llegan ya sumados | 10, 17 | No aplica (C-2) |
+
+### Ejecución sobre el PR #64
+
+| ID | Qué se verifica | Verificaciones en el archivo de Testing | Resultado esperado | Obtenido | Estado |
+| --- | --- | --- | --- | --- | --- |
+| TC-BFA-TEST-02-001 (PR #64) | N1 y su piso cero | TC-001 A a E | A=10, B=0, C (DOC-04 §3.4)=4. D: con bloques (2,5) y (9,1) da **5**; si el piso se aplicara por bloque daría 8. E: rechaza un conteo negativo en cualquiera de las 4 posiciones. | Las 5 verificaciones dieron lo esperado: A=10, B=0, C=4, D=5, y E lanza `IllegalArgumentException` en las 4 posiciones. | **PASÓ** |
+| TC-BFA-TEST-02-002 (PR #64) | S2 con piso cero | — | El PR no calcula S2. | No cubierto por el #64 | **BLOQUEADO** (C-2) |
+| TC-BFA-TEST-02-003 (PR #64) | Los 8 compuestos, los pesos y dónde entra FV | TC-003 A a D | Los valores de la tabla de arriba. FV solo cambia EIV y EIG. CV pesa 2 en EIV y 1 en AE; RT pesa 2 en EIC y en AE. El evaluador devuelve `PENDIENTE_VALIDACION`, `resultadoId` nulo, 18 factores y ningún percentil. | Las 4 verificaciones dieron lo esperado: VOCT=12, ST=16, RT=12, NT=27, EIV=36, EIC=67, EIG=103 y AE=46; pesos y FV correctos; `PENDIENTE_VALIDACION`, `resultadoId` nulo, 18 factores sin percentil. | **PASÓ** |
+| TC-BFA-TEST-02-004 (PR #64) | Parciales y faltantes sin cero | TC-004 A a E | FV=0 es un valor (EIV=32). Sin R2: pendientes RT, EIC, EIG y AE, y se calculan VOCT, ST, NT y EIV. Sin CV: pendientes EIV, EIG y AE, y EIC=67. FV nulo: pendiente, sin valor. Sin datos: los 8 pendientes y ninguno vale 0. | Las 5 verificaciones dieron lo esperado. Ningún faltante se convirtió en 0. El estado de los pendientes es `PENDIENTE` (ver C-1). | **PASÓ** |
+| Pruebas del PR | Regresión | `mvn verify` completo | `BUILD SUCCESS`; incluye las 7 pruebas del #64 y el formato Spotless. | `Tests run: 40, Failures: 0, Errors: 0`; Spotless sin cambios; `BUILD SUCCESS`. | **PASÓ** |
+
+**Ejecución oficial (23-nov, 13:14 y 13:28, America/Managua):** Windows 11, Java 17.0.21 (Microsoft), Maven 3.9.9, PostgreSQL 17 en Docker (puerto local 55432), copia aparte `git worktree` de `pull/64/merge` `32e5a41`.
+
+1. Verificación de Testing: `mvn test -Dtest=PR64VerificacionTestingTest,ConsolidadorCompuestosBfaTest,BfaTestEvaluatorTest`, con el archivo de Testing copiado solo en la copia aparte. Resultado: `Tests run: 21, Failures: 0` (14 de Testing + 7 del PR), `BUILD SUCCESS`. Evidencia: [`PR64-testing-2026-11-23.txt`](../evidencias/BFA-TEST-02/PR64-testing-2026-11-23.txt).
+2. Regresión: `mvn verify` sobre la copia sin cambios (`git status` vacío). Resultado: `Tests run: 40, Failures: 0, Errors: 0`, Spotless limpio, `BUILD SUCCESS`. Evidencia: [`PR64-verify-2026-11-23.txt`](../evidencias/BFA-TEST-02/PR64-verify-2026-11-23.txt).
+
+Un intento anterior de `mvn verify` falló por causas del entorno (puerto 5432 bloqueado, carpeta equivocada y el archivo de Testing presente en la copia). Esas salidas no se usan como evidencia.
+
+**Revisión previa (no es la ejecución oficial):** el 23-nov se compilaron las 5 clases del evaluador del PR #64 (`9b1ad73`) junto con el archivo de Testing, usando un JUnit mínimo en un entorno sin Maven. Las 14 verificaciones dieron el resultado esperado. La ejecución oficial y su evidencia se hacen con Maven sobre `pull/64/merge`.
+
+### Consultas para el PR #64
+
+| ID | Consulta | Para | Afecta |
+| --- | --- | --- | --- |
+| C-1 | Un factor incompleto queda con `estadoCalculo` **`PENDIENTE`** y motivo `FALTA_PUNTUACION_X`. DOC-04 define `NO_CALCULABLE` (componente no aplicado) y `PENDIENTE_VALIDACION` (falta clave o revisión), y la pantalla de resultados de GEN-05 solo reconoce `CALCULADO`, `NO_CALCULABLE` y `PENDIENTE_VALIDACION`: `PENDIENTE` se mostraría como código crudo. ¿Se traduce al guardar o en E9, o se cambia el evaluador? | Max / BFA-BE-08, Documentación (DOC-04/05) | TC-004, GEN-05 |
+| C-2 | El PR no calcula S2 = max(0, aciertos − errores) ni las sumas de sub-bloques de S1 y N2: los recibe ya calculados. ¿En qué componente se calculan? | Max / BFA-BE-08 | TC-002, TC-003 |
+| C-3 | `consolidar` acepta puntuaciones negativas sin avisar (VOC1=−3 da VOCT=2), aunque N1 sí rechaza conteos negativos. ¿Se validan antes de llegar al evaluador? | Max / BFA-BE-08 | TC-004 |
+| C-4 | En los compuestos en cadena, el motivo indica el compuesto intermedio y no el dato que falta (sin R2, EIG dice `FALTA_PUNTUACION_EIC`). ¿Es suficiente para DOC-04, o debe nombrar la puntuación base que falta? | Documentación | TC-004 |
+| C-5 | `calcularN1` existe, pero `consolidar` recibe N1 ya calculado y no lo usa. ¿Quién llama a `calcularN1` en el flujo de E8? | Max / BFA-BE-08 | TC-001 |
+
+**Conformidad:** TC-001, 003 y 004 **PASÓ** en `pull/64/merge` `32e5a41`. La conformidad se emite solo sobre esos casos y ese SHA; no cubre TC-002 (S2), baremos, persistencia ni integración con E8. C-1 a C-5 se comentan en el PR. `testing-ok` solo si los casos pasan y Integración acepta que C-1 a C-5 no bloquean esta parte.
 
 ## Alcance actual del PR #50 (v2)
 
