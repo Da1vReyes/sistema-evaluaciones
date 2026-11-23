@@ -1,11 +1,18 @@
 # BFA-TEST-02 — Casos de prueba: cálculo de puntuaciones y baremos
 
-- **Archivo:** `BFA-TEST-02-casos-prueba-v1.md`
-- **Versión:** v1, borrador actualizado para revisión; preparado el 2026-11-05.
-- **Tarea ClickUp:** [BFA-TEST-02](https://app.clickup.com/t/86bcw9z3k), estado **Open**, vence 2026-11-06 4:00 p. m. (Managua), prioridad no registrada.
+- **Archivo:** `BFA-TEST-02-casos-prueba-v2.md`
+- **Versión:** v2, 2026-11-21: matriz del alcance del PR #50 (claves) y casos nuevos TC-017 a TC-027. v1 (2026-11-05) se conserva tal cual más abajo.
+- **Tarea ClickUp:** [BFA-TEST-02](https://app.clickup.com/t/86bcw9z3k), estado **Open**, vence 2026-11-29, prioridad alta.
 - **Responsable:** Francisco Israel ferrufino James.
 - **Alcance de esta entrega:** diseño documental de casos únicamente. No se ejecutaron pruebas, no se modificó código ni ClickUp, no se publicó nada en GitHub y no se asignó `testing-ok`.
 - **Convención de ejecución:** en todos los casos, resultado obtenido = **PENDIENTE DE EJECUCIÓN** y estado = **NO EJECUTADA**.
+
+## Historial de cambios v1 → v2
+
+- Se agrega la sección «Alcance actual del PR #50 (v2)», que es el primer entregable pedido el 17-nov: qué trae el PR #50 (HEAD `36e2b19`), una matriz de BE09-CA01 a CA08 frente al código y las pruebas del PR, los casos nuevos TC-017 a TC-027 y los bloqueos B-1 a B-12.
+- Se actualizan las filas BE09 de la matriz de cobertura con los casos nuevos.
+- No cambia ningún caso de v1 (TC-001 a 016): conservan su redacción, su autoría y su estado PENDIENTE DE EJECUCIÓN.
+- Nada fue ejecutado. La revisión del PR #50 es estática (lectura del código).
 
 ## Historial de cambios v0 → v1
 
@@ -719,6 +726,74 @@ Los números de PR/SHA son PENDIENTES; no completar con valores inventados. Cada
 
 **Registro de ejecución:** Sin registros.
 
+## Alcance actual del PR #50 (v2)
+
+> **Primer entregable pedido el 17-nov:** matriz del alcance actual del PR #50 y bloqueos que necesitan respuesta de Max o de Integración. Nada de esta sección está ejecutado. Antes de una ejecución final hay que acordar con Integración cómo se divide y valida el alcance (B-11).
+
+### Identificación del PR revisado
+
+| Dato | Valor |
+| --- | --- |
+| PR | [#50](https://github.com/Nell16/sistema-evaluaciones/pull/50), borrador, de BFA-BE-09 (Max Martínez, apoyo de Carlos Ávalos). BFA-BE-09 está en *in review* en ClickUp. |
+| HEAD revisado | `36e2b19f9c0602136ba028f8b76da723bff36105` (17-nov). Es el mismo que indica la tarea. |
+| Base del PR | `d33f6a8`. `main` avanzó 9 commits, hasta `ef0317e`. Una fusión de prueba (`git merge-tree`) **no da conflictos** al 21-nov. |
+| Tamaño | 33 archivos y 6075 líneas añadidas, sin borrar nada. Son solo de backend: ningún archivo de frontend. |
+| Revisión | Estática, leyendo el código del PR (dominio, servicios, adaptadores, migraciones y nombres de las pruebas). **No se compiló ni se ejecutó.** |
+
+### Qué contiene el PR #50
+
+| Pieza | Archivos | Qué hace |
+| --- | --- | --- |
+| Dominio | `VersionClaveBFA`, `EntradaClaveBFA`, `EstadoVersionClaveBFA` | La clave pertenece a un formulario (`idVersionFormulario`) y tiene `version` y `referenciaFuente` obligatorias. Estados: BORRADOR → APROBADA (con evidencia) → RETIRADA (conserva la evidencia). Solo una APROBADA sirve para calificaciones nuevas. |
+| Servicios | `GestionClaveBFAService`, `AprobacionClaveBFAService`, `ValidacionCoberturaClaveBFAService`, `ValidacionClaveBFAParaCalificacionService` | Crear clave; registrar entradas una por una o por lote (atómico y sin preguntas repetidas); consultar; aprobar si la cobertura está completa; retirar; validar la cobertura exacta de las preguntas de **selección**; entregar las entradas solo de una clave APROBADA, completa y del mismo formulario. |
+| Autorización | `AutorizacionClaveBFAPort` y `AutorizacionClaveBFADenegadaAdapter` (perfil `!seguridad-integrada`) | Un permiso por operación: crear, agregar, consultar, aprobar, retirar y calificar. El adaptador provisional **niega todo**. El permiso de calificar es distinto del de consultar y, por defecto, también se niega. |
+| Persistencia | Entidades JPA, repositorios y 2 adaptadores | Comprueba que la pregunta sea del formulario de la clave y que la opción sea de la pregunta. Rechaza entradas duplicadas y versiones duplicadas por formulario. Aprobar y retirar vuelven a exigir el permiso. |
+| Base de datos | `V202611121500`, `V202611141830` y `V202611141900` | Tablas `version_clave_bfa` y `entrada_clave_bfa` con restricciones UNIQUE y CHECK. Disparadores que: solo permiten crear en BORRADOR; impiden cambiar identidad, versión o fuente; solo permiten BORRADOR→APROBADA y APROBADA→RETIRADA; impiden modificar entradas y agregarlas a claves no BORRADOR; impiden borrar claves o entradas APROBADAS o RETIRADAS. |
+| Pruebas del PR | 11 clases: 2 de dominio, 4 de servicio con dobles y 5 de integración con PostgreSQL | Usan la base `evaluaciones_bfa_test`, con `flyway.out-of-order: true` solo en pruebas. |
+| CI | `.github/workflows/ci.yml` | Agrega el paso «Crear base de pruebas BFA» y líneas en blanco. **Cambia un archivo común de CI** (B-12). |
+
+**No contiene:** endpoints REST ni controladores (0 archivos), un perfil `seguridad-integrada` con permisos reales, la integración con el cálculo de BFA-BE-08 (no hay registro de qué clave usó cada calificación), baremos (BFA-BE-10) ni fórmulas.
+
+### Matriz de alcance: criterios de BFA-BE-09 frente al PR #50
+
+| Criterio de BFA-BE-09 (texto de ClickUp) | Qué hay en el PR #50 | Pruebas del PR (por nombre) | Caso de Testing | Cobertura |
+| --- | --- | --- | --- | --- |
+| BE09-CA01 Cada clave queda vinculada a una edición y versión identificable del formulario. | FK a `version_formulario`, `version` única por formulario, identidad inmutable | `debeRechazarVersionClaveDuplicadaEnMismoFormulario`, `debeImpedirCambiarLaVersionDeClave` | TC-017 (y TC-011 de v1) | **Parcial:** falta confirmar que «edición» = `version_formulario` (B-6). |
+| BE09-CA02 El sistema detecta claves incompletas, incompatibles o inconsistentes. | Cobertura exacta; opción de otra pregunta; pregunta de otro formulario; duplicados | `debeRechazarOpcionDeOtraPregunta`, `debeRechazarPreguntaDeOtroFormulario`, `debeRechazarClaveConCoberturaIncompleta`, `debeRechazarClaveConPreguntaAdicional` | TC-018, TC-019, TC-020 | **En el PR.** |
+| BE09-CA03 Una clave no aprobada no puede utilizarse para generar calificaciones oficiales. | `obtenerClaveAprobada` rechaza BORRADOR, RETIRADA y otro formulario | `debeRechazarClaveEnBorradorDesdePostgreSQL`, `debeRechazarClaveRetiradaDesdePostgreSQL` | TC-024 (y TC-012 de v1) | **Parcial:** no hay calificación real que la consuma (BFA-BE-08, B-9). |
+| BE09-CA04 Las claves aprobadas permiten comprobar las respuestas de las preguntas correspondientes. | Entrega las entradas de una clave aprobada y completa | `debeEntregarEntradasDeClaveCompletaYAutorizada` | TC-024 | **Parcial:** entrega las entradas, pero ninguna respuesta se corrige todavía (B-9). |
+| BE09-CA05 Las respuestas correctas no se exponen mediante los endpoints públicos del sistema. | No hay endpoints | — | TC-026 | **Se cumple porque no hay API.** Se repite cuando haya endpoints de claves. |
+| BE09-CA06 Los usuarios sin autorización no pueden consultar ni modificar claves. | Puerto de permisos; adaptador provisional que niega todo | `debeDenegarAprobacionSinPermisoDeAprobar`, `debeRechazarConsultaDeClaveSinAutorizacion`, `debeDenegarEntregaSinPermisoDeCalificacion` | TC-025 (y TC-013 de v1) | **Parcial:** solo «nadie puede». Los roles reales de DOC-05 no existen (B-3). |
+| BE09-CA07 Las claves utilizadas en cálculos históricos permanecen identificables y no se sustituyen silenciosamente. | Disparadores de inmutabilidad y de no borrar; el retiro conserva la evidencia | `debeImpedirModificarUnaEntradaYaRegistrada`, `debeImpedirEliminarClaveAprobada`, `debeImpedirReactivarClaveRetirada` | TC-022, TC-023 (y TC-010 de v1) | **Parcial:** la clave no se puede alterar, pero no hay registro de qué clave usó cada cálculo (B-5). |
+| BE09-CA08 Las pruebas automatizadas verifican claves válidas, incompletas, incompatibles y no autorizadas. | 11 clases de prueba | Todas las anteriores | TC-027 (y TC-015 de v1) | **En el PR:** hay que ejecutarlas en `pull/50/merge`. |
+| Pedido el 17-nov: aprobación y retiro | `AprobacionClaveBFAService` | `debeAprobarClaveCompletaYGuardarEvidenciaEnPostgreSQL`, `debeRetirarClaveAprobadaYConservarEvidencia` | TC-021, TC-022 | **En el PR.** |
+| Pedido el 17-nov: carga y compatibilidad | Carga individual y por lote, atómica | `debePersistirTodaLaCargaMultipleValida`, `debeRevertirCargaCompletaSiFallaLaSegundaEntrada` | TC-018, TC-019 | **En el PR.** |
+| Entregable de BFA-BE-09: «Integración con las reglas de calificación BFA» | No está | — | TC-012 de v1 | **Fuera del PR** (BFA-BE-08). |
+
+**Fuera del PR #50, sigue pendiente:** BE08-CA01 a CA12 y BE10-CA01 a CA10 (TC-001 a TC-010 y TC-014 de v1). Según la tarea, no se emite conformidad final ni se cierra BFA-TEST-02 por aprobar solo las claves.
+
+### Casos nuevos de claves (v2)
+
+Se aplica la misma convención que en v1: **resultado obtenido = PENDIENTE DE EJECUCIÓN** y **estado = NO EJECUTADA**. Se ejecutan en local sobre `pull/50/merge`, con PostgreSQL de `docker compose` y la base de pruebas, siguiendo las instrucciones de Max (B-2). Es una ejecución de servicios y base de datos: **no se usa Postman** porque no hay endpoints. Todos los datos son sintéticos: formulario, preguntas y opciones ficticias, sin claves ni ítems reales.
+
+Las verificaciones independientes de base de datos (marcadas «SQL») se hacen con `psql` sobre la base de pruebas, después de `mvn verify`, con filas ficticias creadas por Testing. No reemplazan las pruebas del PR; las confirman por fuera.
+
+| ID | Criterio | Datos y precondiciones | Pasos | Resultado esperado | Obtenido | Estado |
+| --- | --- | --- | --- | --- | --- | --- |
+| TC-BFA-TEST-02-017 — Vínculo clave–formulario y versión | BE09-CA01 | Formulario sintético F1 con una subprueba de selección | 1. Crear clave «K-v1» para F1. 2. Crear otra «K-v1» para F1. 3. Crear clave para un formulario inexistente. 4. SQL: `UPDATE` de `version` o `id_version_formulario`. | 1: BORRADOR, sin evidencia. 2: rechazo por versión duplicada. 3: rechazo por formulario inexistente. 4: el disparador rechaza el cambio de identidad o versión. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-018 — Carga de entradas compatibles | BE09-CA02, BE09-CA04 | K-v1 en BORRADOR; preguntas P1 y P2 de F1 con sus opciones; P9 de otro formulario | 1. Registrar P1 con su opción. 2. P2 con una opción de P1. 3. P9. 4. P1 otra vez. | 1: guardada. 2: «la opción no pertenece a la pregunta». 3: «la pregunta no pertenece al formulario». 4: rechazo por duplicado. En 2 a 4 no se guarda nada. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-019 — Carga por lote atómica | BE09-CA02 | K-v1 en BORRADOR | 1. Lote válido de 2 entradas. 2. Lote con la 2.ª entrada inválida. 3. Lote con una pregunta repetida, vacío o con entradas de otra clave. | 1: guarda las 2. 2: no queda **ninguna** entrada del lote. 3: rechazo antes de guardar. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-020 — Cobertura exacta de preguntas de selección | BE09-CA02 | F1 con 2 preguntas de selección y una subprueba de texto libre (tipo FV) | 1. Validar cobertura con 1 de 2 entradas. 2. Con 2 de 2. 3. Formulario sin preguntas de selección. | 1: «no cubre exactamente todas las preguntas». 2: válida, y las preguntas de texto libre no se exigen. 3: rechazo. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-021 — Aprobación | Pedido 17-nov; BE09-CA03 | K-v1 incompleta y K-v2 completa, ambas en BORRADOR | 1. Aprobar K-v1 con evidencia. 2. Aprobar K-v2 sin evidencia o con evidencia en blanco. 3. Aprobar K-v2 con evidencia. 4. Aprobar K-v2 otra vez. | 1: rechazo y K-v1 sigue en BORRADOR. 2: rechazo. 3: APROBADA y la evidencia queda guardada. 4: rechazo («solo BORRADOR»). | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-022 — Retiro conserva evidencia | Pedido 17-nov; BE09-CA07 | K-v2 APROBADA y K-v3 en BORRADOR | 1. Retirar K-v3. 2. Retirar K-v2. 3. Retirar K-v2 otra vez. 4. SQL: pasar K-v2 a APROBADA o a BORRADOR. | 1: rechazo. 2: RETIRADA, con la **misma** evidencia. 3: rechazo. 4: el disparador rechaza la transición. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-023 — Inmutabilidad histórica en la base (SQL) | BE09-CA07 | K-v2 APROBADA o RETIRADA, con entradas | SQL: 1. `UPDATE` de una entrada. 2. `INSERT` de una entrada nueva. 3. `DELETE` de una entrada. 4. `DELETE` de la clave. 5. Cambiar `evidencia_aprobacion`. 6. `INSERT` de una clave directamente en APROBADA. | Todos rechazados por los disparadores, con su mensaje, y los datos quedan iguales. Control: en una clave BORRADOR, el `DELETE` sí se permite. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-024 — Uso para calificación | BE09-CA03, BE09-CA04 | K-v2 APROBADA y completa; K-v1 en BORRADOR; K-v4 RETIRADA; F2 otro formulario. Permiso de calificar concedido con un doble de prueba | 1. Pedir entradas de K-v2 con F1. 2. K-v2 con F2. 3. K-v1. 4. K-v4. 5. Una clave inexistente. | 1: entrega todas las entradas y la lista no se puede modificar. 2 a 5: rechazo, sin entregar ninguna entrada. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-025 — Acceso denegado | BE09-CA06 | Perfil por defecto (adaptador que niega todo) | 1. Llamar crear, agregar, consultar, aprobar, retirar y calificar. 2. Con un doble que solo concede calificar: consultar la clave. | 1: todas rechazadas con `SecurityException` **antes** de leer datos (no revelan si la clave existe). 2: calificar funciona y consultar se rechaza; son permisos separados. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-026 — Sin exposición por API | BE09-CA05 | `pull/50/merge` | 1. Buscar controladores o rutas que devuelvan claves o entradas. 2. Revisar `openapi.yaml`. 3. Con el backend arriba, revisar Swagger UI. | No hay ninguna ruta de claves. Se repite cuando existan endpoints de claves. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+| TC-BFA-TEST-02-027 — Pruebas automáticas del PR | BE09-CA08 | `pull/50/merge`, PostgreSQL 17 local y base `evaluaciones_bfa_test` creada | 1. `mvn -f backend/pom.xml verify`. 2. Anotar las clases y el conteo de pruebas. | `BUILD SUCCESS`, y las 11 clases de claves se ejecutan y pasan. Se guarda la salida como evidencia. | PENDIENTE DE EJECUCIÓN | NO EJECUTADA |
+
+**Evidencia prevista:** `docs/evidencias/BFA-TEST-02/` con la salida de `mvn verify`, la salida de los `psql` (TC-022 y 023) y el SHA combinado probado.
+
 ## Matriz de cobertura: BFA-TEST-02, BFA-BE-08, BFA-BE-09 y BFA-BE-10
 
 | Ref. | Criterio de aceptación registrado (texto íntegro) | Caso(s) | Preparación / estado |
@@ -738,14 +813,14 @@ Los números de PR/SHA son PENDIENTES; no completar con valores inventados. Cada
 | `BE08-CA10` | No se modifican respuestas originales ni revisiones históricas completadas. | TC-BFA-TEST-02-010 | PENDIENTE: interfaz de consulta/revisión final. |
 | `BE08-CA11` | La implementación utiliza el evaluador BFA y los servicios del motor común sin duplicar responsabilidades. | TC-BFA-TEST-02-014 | DOC-06 figura Closed en ClickUp; verificar la conformidad arquitectónica durante la revisión del PR, aún no disponible. |
 | `BE08-CA12` | Las pruebas automatizadas verifican cálculos completos, parciales, pendientes y casos límite. | TC-BFA-TEST-02-015 | PENDIENTE: PR/CI y fixtures. |
-| `BE09-CA01` | Cada clave queda vinculada a una edición y versión identificable del formulario. | TC-BFA-TEST-02-011 | PENDIENTE: fixture sintética y contrato. |
-| `BE09-CA02` | El sistema detecta claves incompletas, incompatibles o inconsistentes. | TC-BFA-TEST-02-012 | PENDIENTE: fixture sintética y estados/errores contractuales. |
-| `BE09-CA03` | Una clave no aprobada no puede utilizarse para generar calificaciones oficiales. | TC-BFA-TEST-02-012 | PENDIENTE: estado/flujo de aprobación. |
-| `BE09-CA04` | Las claves aprobadas permiten comprobar las respuestas de las preguntas correspondientes. | TC-BFA-TEST-02-011 | PENDIENTE: clave/respuestas de prueba aprobadas; ninguna clave real incluida. |
-| `BE09-CA05` | Las respuestas correctas no se exponen mediante los endpoints públicos del sistema. | TC-BFA-TEST-02-013 | PENDIENTE: endpoints y política de autorización final. |
-| `BE09-CA06` | Los usuarios sin autorización no pueden consultar ni modificar claves. | TC-BFA-TEST-02-013 | DOC-04 define permisos por rol/alcance; endpoint/código final requiere cotejo con copia actualizada DOC-05. |
-| `BE09-CA07` | Las claves utilizadas en cálculos históricos permanecen identificables y no se sustituyen silenciosamente. | TC-BFA-TEST-02-010 | Reglas de nuevas revisiones e historial definidas por DOC-04 P11; IDs/campos de contrato final por verificar. |
-| `BE09-CA08` | Las pruebas automatizadas verifican claves válidas, incompletas, incompatibles y no autorizadas. | TC-BFA-TEST-02-011, 012, 015 | PENDIENTE: PR/CI y datos de prueba autorizados. |
+| `BE09-CA01` | Cada clave queda vinculada a una edición y versión identificable del formulario. | TC-BFA-TEST-02-011, 017 | v2: PR #50 (`36e2b19`) en matriz de alcance; PENDIENTE: fixture sintética y contrato. |
+| `BE09-CA02` | El sistema detecta claves incompletas, incompatibles o inconsistentes. | TC-BFA-TEST-02-012, 018, 019, 020 | v2: PR #50 (`36e2b19`) en matriz de alcance; PENDIENTE: fixture sintética y estados/errores contractuales. |
+| `BE09-CA03` | Una clave no aprobada no puede utilizarse para generar calificaciones oficiales. | TC-BFA-TEST-02-012, 021, 024 | v2: PR #50 (`36e2b19`) en matriz de alcance; PENDIENTE: estado/flujo de aprobación. |
+| `BE09-CA04` | Las claves aprobadas permiten comprobar las respuestas de las preguntas correspondientes. | TC-BFA-TEST-02-011, 018, 024 | v2: PR #50 (`36e2b19`) en matriz de alcance; PENDIENTE: clave/respuestas de prueba aprobadas; ninguna clave real incluida. |
+| `BE09-CA05` | Las respuestas correctas no se exponen mediante los endpoints públicos del sistema. | TC-BFA-TEST-02-013, 026 | v2: PR #50 (`36e2b19`) en matriz de alcance; PENDIENTE: endpoints y política de autorización final. |
+| `BE09-CA06` | Los usuarios sin autorización no pueden consultar ni modificar claves. | TC-BFA-TEST-02-013, 025 | v2: PR #50 (`36e2b19`) en matriz de alcance; DOC-04 define permisos por rol/alcance; endpoint/código final requiere cotejo con copia actualizada DOC-05. |
+| `BE09-CA07` | Las claves utilizadas en cálculos históricos permanecen identificables y no se sustituyen silenciosamente. | TC-BFA-TEST-02-010, 022, 023 | v2: PR #50 (`36e2b19`) en matriz de alcance; Reglas de nuevas revisiones e historial definidas por DOC-04 P11; IDs/campos de contrato final por verificar. |
+| `BE09-CA08` | Las pruebas automatizadas verifican claves válidas, incompletas, incompatibles y no autorizadas. | TC-BFA-TEST-02-011, 012, 015, 027 | v2: PR #50 (`36e2b19`) en matriz de alcance; PENDIENTE: PR/CI y datos de prueba autorizados. |
 | `BE10-CA01` | Los baremos se almacenan por versión, factor y rango normativo. | TC-BFA-TEST-02-007 | Cotejar los detalles de la interfaz de carga con la copia final de DOC-05; el PDF visible está en v0.6. |
 | `BE10-CA02` | La carga conserva fielmente los valores y las celdas sin información del material aprobado. | TC-BFA-TEST-02-007 | Dato vacío FV/percentil 97 documentado; PR pendiente. |
 | `BE10-CA03` | El sistema detecta rangos inválidos o coincidencias ambiguas. | TC-BFA-TEST-02-008 | Fixture estructural artificial; PR/contrato pendiente. |
@@ -768,6 +843,23 @@ Los números de PR/SHA son PENDIENTES; no completar con valores inventados. Cada
 5. **DOC-06 (Closed, 5 nov 5:00 p. m.):** D09 y el ciclo de cálculo constan corregidos en el comentario de revisión; inspección de implementación requiere PR/commit.
 6. **Compatibilidad normativa:** DOC-02 documenta Normas BFA 1992 (Nicaragua), pero la compatibilidad exacta con la edición usada por UAM queda como punto abierto. Hasta su resolución, TC-005/006/009 no debe producir conformidad normativa.
 7. **Desarrollo:** BE-08/09/10 siguen Open, sin PR/SHA; ningún caso puede ejecutarse contra versión concreta. DOC-08 (Open) también continúa como bloqueo directo.
+
+### Bloqueos nuevos de v2 (PR #50) y a quién se le pregunta
+
+| ID | Bloqueo o pregunta | Para | Afecta |
+| --- | --- | --- | --- |
+| B-1 | Estado documental al 21-nov: DOC-07 sigue *in progress* y DOC-08 sigue *Open*. Toda ejecución será parcial y no da conformidad final. | Documentación (Gabriel Pérez, Geovanny Ruiz) | Todos |
+| B-2 | Instrucciones de Max para correr las pruebas en local: crear la base `evaluaciones_bfa_test` (en CI se hace con `CREATE DATABASE … OWNER evaluaciones`), variables y comando. ¿Hay que correr algo más que `mvn verify`? | Max | TC-017 a 027 |
+| B-3 | No existe una implementación del perfil `seguridad-integrada`: toda operación se niega. ¿Cuándo y en qué tarea se implementan los roles de DOC-05 (Psicólogo crea/carga/aprueba, permiso de calificación interno)? | Max, GEN-06 | TC-025, BE09-CA06 |
+| B-4 | No hay ninguna restricción que impida tener **dos claves APROBADAS a la vez** para el mismo formulario. ¿Se permite? Si se permite, ¿cuál usa la calificación? | Max, Documentación (DOC-03 y DOC-04) | TC-021, TC-024 |
+| B-5 | Ninguna tabla registra qué clave usó cada calificación. ¿Lo hace BFA-BE-08? Sin eso, BE09-CA07 solo queda cubierto a medias. | Max, BFA-BE-08 | TC-010, TC-023 |
+| B-6 | ¿La «edición» del criterio CA01 es `version_formulario`? Hay que confirmarlo con ENT-BFA-02 y 03 de DOC-03. | Documentación | TC-017 |
+| B-7 | DOC-08 está *Open*. ¿Testing puede usar datos sintéticos propios (formulario, preguntas y opciones inventadas) para TC-017 a 024? | Documentación, Integración | TC-017 a 024 |
+| B-8 | La cobertura solo exige preguntas de **selección**; las de texto libre (FV) quedan fuera. Hay que confirmar que es lo esperado y que FV se trata en BFA-TEST-03. | Max | TC-020, TC-012 |
+| B-9 | BFA-BE-08 (cálculo) y BFA-BE-10 (baremos) no tienen PR. Siguen bloqueados TC-001 a 010 y 014, y la integración de la clave con la calificación. | Desarrollo BFA | v1 |
+| B-10 | El PR parte de `d33f6a8` y `main` va en `ef0317e`. Hoy fusiona sin conflictos. En las pruebas `out-of-order: true`; en ejecución normal no. Si otro PR fusiona antes migraciones con una versión mayor, puede fallar Flyway. | Integración (Kisnner) | TC-027 |
+| B-11 | El PR sigue en borrador con 33 archivos. ¿Se divide (por ejemplo, migraciones y dominio por un lado, servicios por otro) o se valida entero? Hay que decidirlo antes de la ejecución final. | Integración, Max | Todos |
+| B-12 | El PR modifica `.github/workflows/ci.yml`, que es común para todos. ¿Integración aprueba ese cambio dentro de un PR de BFA? | Integración | Fusión |
 
 ### Nota de aprobación
 
