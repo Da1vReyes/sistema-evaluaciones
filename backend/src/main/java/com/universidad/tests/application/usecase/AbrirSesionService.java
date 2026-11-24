@@ -21,7 +21,8 @@ public class AbrirSesionService {
         try {
             SesionAbierta sesion = autenticacion.abrirSesion(solicitud.correo(), contrasena);
             if (sesion.expiraEn() == null) {
-                // El contrato exige una fecha; la dependencia debe definir la vigencia.
+                // TEST-30 exige expiraEn presente; OpenAPI admite fecha, pero no null.
+                // La respuesta esperada y la vigencia siguen pendientes de aclaracion.
                 // No entregar una sesion ilimitada como respuesta de exito.
                 autenticacion.cerrarSesion(sesion.token());
                 throw new IllegalStateException("La vigencia de la sesion no esta configurada");
