@@ -21,6 +21,33 @@ public record EvaluacionSubprueba(
         String letraInicial,
         int maximoEntradas) {
 
+    public boolean esFluidezVerbal() {
+        return "FV".equalsIgnoreCase(codigo);
+    }
+
+    public EvaluacionSubprueba iniciar(Instant ahora) {
+        return new EvaluacionSubprueba(
+                idEvaluacionSubprueba,
+                idEvaluacion,
+                idConfiguracionSubprueba,
+                codigo,
+                nombre,
+                orden,
+                duracionSegundos,
+                EstadoSubprueba.ACTIVA,
+                instrucciones,
+                permitirRetroceso,
+                ahora,
+                ahora.plusSeconds(duracionSegundos),
+                null,
+                letraInicial,
+                maximoEntradas);
+    }
+
+    public boolean vencio(Instant ahora) {
+        return fechaFinLimite != null && ahora.isAfter(fechaFinLimite);
+    }
+
     // El tiempo restante lo calcula siempre el servidor; solo existe mientras esta ACTIVA
     public Long segundosRestantes(Instant ahora) {
         if (estado != EstadoSubprueba.ACTIVA || fechaFinLimite == null) {
