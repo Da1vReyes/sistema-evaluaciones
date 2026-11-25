@@ -5,15 +5,14 @@ import com.universidad.tests.controller.PeriodoController;
 import com.universidad.tests.controller.SujetoController;
 import com.universidad.tests.domain.exception.ErrorNegocioException;
 import com.universidad.tests.domain.exception.ErroresEvaluacion;
+import com.universidad.tests.domain.exception.SinPermisoException;
 import com.universidad.tests.domain.exception.TipoErrorNegocio;
 import com.universidad.tests.dto.response.ErrorResponse;
 import com.universidad.tests.dto.response.ErrorResponse.DetalleCampo;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
-import java.sql.SQLException;
-import java.time.Clock;
-import java.time.Instant;
-import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -30,6 +29,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.sql.SQLException;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
 
 /**
  * Errores de los controladores de GEN-02-BE (E3, E19 y E21), con el formato común del Documento
@@ -158,9 +162,8 @@ public class ManejadorErroresInicioEvaluacion {
                 List.of());
     }
 
-    @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<ErrorResponse> sinPermiso(
-            SecurityException e, HttpServletRequest request) {
+    @ExceptionHandler({SecurityException.class, SinPermisoException.class})
+    public ResponseEntity<ErrorResponse> sinPermiso(Exception e, HttpServletRequest request) {
         return responder(
                 HttpStatus.FORBIDDEN,
                 "SIN_PERMISO",
@@ -178,6 +181,20 @@ public class ManejadorErroresInicioEvaluacion {
                     && sql.getMessage() != null
                     && sql.getMessage().contains("uq_evaluacion_en_curso")) {
                 return negocio(ErroresEvaluacion.evaluacionEnCurso(), request);
+            }
+        }
+        for (Throwable causa = e; causa != null; causa = causa.getCause()) {
+            if (causa instanceof SQLException sql
+                    && "23505".equals(sql.getSQLState())
+                    && sql.getMessage() != null
+                    && sql.getMessage().contains("uq_sujeto_codigo_institucional")
+                    && request.getRequestURI().equals("/api/v1/sujetos")) {
+                return responder(
+                        HttpStatus.CONFLICT,
+                        "SUJETO_DUPLICADO",
+                        "Ya existe ese identificador institucional.",
+                        request,
+                        List.of());
             }
         }
         return inesperado(e, request);

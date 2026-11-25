@@ -1,6 +1,7 @@
 package com.universidad.tests.infrastructure.security;
 
 import com.universidad.tests.domain.port.AutorizacionEvaluacionPort;
+
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -31,17 +32,6 @@ public class AutorizacionEvaluacionProvisionalAdapter implements AutorizacionEva
 
     @Override
     public void exigirPermisoLeerPeriodos() {
-        // Pendiente de GEN-06.
-    }
-
-    // GEN-48-N1
-    @Override
-    public void exigirPermisoCrearSujeto() {
-        // Pendiente de GEN-06.
-    }
-
-    @Override
-    public void exigirPermisoBuscarSujetos() {
         // Pendiente de GEN-06.
     }
 }

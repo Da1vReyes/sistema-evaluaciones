@@ -4,22 +4,23 @@ import com.universidad.tests.application.usecase.vista.SujetoVista;
 import com.universidad.tests.domain.exception.ErrorNegocioException;
 import com.universidad.tests.domain.exception.TipoErrorNegocio;
 import com.universidad.tests.domain.model.Sujeto;
-import com.universidad.tests.domain.port.AutorizacionEvaluacionPort;
+import com.universidad.tests.domain.port.AutorizacionSujetoPort;
 import com.universidad.tests.domain.repository.SujetoRepository;
-import java.time.LocalDate;
-import org.springframework.dao.DataIntegrityViolationException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 /** E18 — Registrar a la persona evaluada sin crear cuenta ni abrir evaluación (CU-GEN-20). */
 @Service
 public class RegistrarSujetoUseCase {
 
-    private final AutorizacionEvaluacionPort autorizacion;
+    private final AutorizacionSujetoPort autorizacion;
     private final SujetoRepository sujetoRepository;
 
     public RegistrarSujetoUseCase(
-            AutorizacionEvaluacionPort autorizacion, SujetoRepository sujetoRepository) {
+            AutorizacionSujetoPort autorizacion, SujetoRepository sujetoRepository) {
         this.autorizacion = autorizacion;
         this.sujetoRepository = sujetoRepository;
     }
@@ -46,22 +47,13 @@ public class RegistrarSujetoUseCase {
                             + codigoLimpio);
         }
 
-        try {
-            Sujeto nuevo =
-                    new Sujeto(
-                            null, codigoLimpio, nombresLimpios, apellidosLimpios, fechaNacimiento);
-            Sujeto guardado = sujetoRepository.guardar(nuevo);
-            return new SujetoVista(
-                    guardado.idSujeto(),
-                    guardado.codigoInstitucional(),
-                    guardado.nombres(),
-                    guardado.apellidos());
-        } catch (DataIntegrityViolationException ex) {
-            throw new ErrorNegocioException(
-                    TipoErrorNegocio.CONFLICTO,
-                    "SUJETO_DUPLICADO",
-                    "Ya existe un sujeto registrado con el identificador institucional: "
-                            + codigoLimpio);
-        }
+        Sujeto nuevo =
+                new Sujeto(null, codigoLimpio, nombresLimpios, apellidosLimpios, fechaNacimiento);
+        Sujeto guardado = sujetoRepository.guardar(nuevo);
+        return new SujetoVista(
+                guardado.idSujeto(),
+                guardado.codigoInstitucional(),
+                guardado.nombres(),
+                guardado.apellidos());
     }
 }

@@ -1,4 +1,4 @@
-package com.universidad.tests.application.usecase.bfa;
+package com.universidad.tests.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -6,26 +6,26 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.universidad.tests.application.usecase.BuscarSujetoUseCase;
-import com.universidad.tests.application.usecase.RegistrarSujetoUseCase;
 import com.universidad.tests.application.usecase.vista.SujetoVista;
 import com.universidad.tests.domain.exception.ErrorNegocioException;
 import com.universidad.tests.domain.model.Sujeto;
-import com.universidad.tests.domain.port.AutorizacionEvaluacionPort;
+import com.universidad.tests.domain.port.AutorizacionSujetoPort;
 import com.universidad.tests.domain.repository.SujetoRepository;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 @ExtendWith(MockitoExtension.class)
 class SujetoUseCasesTest {
 
-    @Mock private AutorizacionEvaluacionPort autorizacion;
+    @Mock private AutorizacionSujetoPort autorizacion;
     @Mock private SujetoRepository sujetoRepository;
 
     @InjectMocks private RegistrarSujetoUseCase registrarSujetoUseCase;

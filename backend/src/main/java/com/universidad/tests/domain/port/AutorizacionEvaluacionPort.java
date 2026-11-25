@@ -17,9 +17,4 @@ public interface AutorizacionEvaluacionPort {
 
     /** PERIODO_LEER (E21). */
     void exigirPermisoLeerPeriodos();
-
-    // GEN 48 - N1
-    void exigirPermisoCrearSujeto();
-
-    void exigirPermisoBuscarSujetos();
 }
