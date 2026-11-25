@@ -205,7 +205,7 @@ Un test agrega tablas propias con FK a estas tablas del núcleo, sin modificar s
 | Caso | Contrato | Tablas físicas confirmadas en `main` | Alcance verificado |
 | --- | --- | --- | --- |
 | E3 | `POST /api/v1/evaluaciones` | `sujeto`, `periodo`, `test`, `version_formulario`, `configuracion_subprueba`, `evaluacion`, `evaluacion_subprueba` | El rescate GEN-35-BE (#125) incorpora E3, crea sujeto y período y establece sus FK desde evaluación. El motor (#104) crea evaluación y las aplicaciones de subprueba. |
-| E7 | `PUT /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/respuestas` | `evaluacion_subprueba`, `pregunta`, `opcion_respuesta`, `respuesta_evaluacion` | El motor (#104) aporta la relación de la respuesta con la aplicación y la correspondencia entre pregunta y opción. El ejemplo describe el soporte relacional y se contrasta con la implementación final del endpoint. |
+| E7 | `PUT /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/respuestas` | `evaluacion_subprueba`, `pregunta`, `opcion_respuesta`, `respuesta_evaluacion` | El motor (#104) vincula la respuesta a la aplicación mediante una FK compuesta y referencia la pregunta y la opción con FK separadas. La comprobación de que la opción pertenece a la pregunta se debe verificar en la implementación final de E7. |
 | E9 | `GET /api/v1/evaluaciones/{evaluacionId}/resultados` | Las migraciones revisadas de `main` todavía no confirman `resultado` ni `revision_resultado`. | DOC-41 (#120) y el diagrama documentan el diseño. La revisión vigente se selecciona mediante `resultado.referencia_revision_vigente`. Verificar las tablas físicas con DOC-45 y el backend de E9 (#73) antes del cierre. |
 
 - [Contrato OpenAPI](../api/openapi.yaml)
