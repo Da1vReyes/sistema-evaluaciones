@@ -3,6 +3,7 @@ package com.universidad.tests.controller;
 import com.universidad.tests.application.service.AgregarPreguntaVersionadaService.PreguntaDuplicadaException;
 import com.universidad.tests.application.service.VersionFormularioService.VersionDuplicadaException;
 import com.universidad.tests.domain.exception.NoAutenticadoException;
+import com.universidad.tests.domain.exception.SinPermisoException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -31,7 +32,7 @@ public class VersionadoErrorHandler {
         return responder(HttpStatus.BAD_REQUEST, "SOLICITUD_INVALIDA", error, request);
     }
 
-    @ExceptionHandler(SecurityException.class)
+    @ExceptionHandler({SecurityException.class, SinPermisoException.class})
     public ResponseEntity<ErrorResponse> sinPermiso(Exception error, HttpServletRequest request) {
         return responder(HttpStatus.FORBIDDEN, "SIN_PERMISO", error, request);
     }

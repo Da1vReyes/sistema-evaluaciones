@@ -29,6 +29,12 @@ public class AutorizacionContenidoService implements AutorizacionContenidoPort {
     }
 
     @Override
+    public void exigirPermisoConfigurarSubprueba(Long idVersionFormulario) {
+        autorizacion.exigirPermiso(CONFIGURAR_BFA);
+        autorizacion.exigirPermiso("INSTRUCCIONES_EDITAR");
+    }
+
+    @Override
     public void exigirPermisoPublicar(Long idVersionFormulario) {
         autorizacion.exigirPermiso(CONFIGURAR_BFA);
     }
