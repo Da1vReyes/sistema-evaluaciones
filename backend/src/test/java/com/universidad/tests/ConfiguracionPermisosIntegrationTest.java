@@ -124,7 +124,12 @@ class ConfiguracionPermisosIntegrationTest {
     @Test
     void publicadaSigueSinEditarAunqueTengaPermisos() throws Exception {
         permisos("CONFIGURAR_BFA", "INSTRUCCIONES_EDITAR");
-        mvc.perform(put(ruta).header("Authorization", "Bearer " + TOKEN).contentType(MediaType.APPLICATION_JSON).content(CUERPO)).andExpect(status().isOk());
+        mvc.perform(
+                        put(ruta)
+                                .header("Authorization", "Bearer " + TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(CUERPO))
+                .andExpect(status().isOk());
         em.flush();
         version.aplicarEstado(
                 EstadoVersionFormulario.PUBLICADA, Instant.now(), "evidencia-ficticia");
