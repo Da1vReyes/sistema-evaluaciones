@@ -49,7 +49,12 @@ class ConflictoSujetoTest {
                                                 new SQLException(restriccion, estado))))
                         .setControllerAdvice(manejador)
                         .build();
-        mvc.perform(post("/api/v1/sujetos").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mvc.perform(
+                        post("/api/v1/sujetos")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"identificadorInstitucional\":\"FICTICIO-ERROR\",\"nombres\":\"Persona"
+                                            + " Ficticia\",\"apellidos\":\"Prueba\"}"))
                 .andExpect(status().is(http))
                 .andExpect(jsonPath("$.codigo").value(codigo));
     }
