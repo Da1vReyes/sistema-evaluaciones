@@ -1,6 +1,7 @@
 package com.universidad.tests.controller;
 
 import com.universidad.tests.application.usecase.RegistroCuentaException;
+import com.universidad.tests.domain.exception.RecuperacionException;
 import com.universidad.tests.dto.response.ErrorResponse;
 import com.universidad.tests.dto.response.ErrorResponse.DetalleCampo;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +21,12 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /** Conserva el formato de error aprobado para errores de entrada HTTP de acceso. */
-@RestControllerAdvice(assignableTypes = {SesionAuthController.class, RegistroAuthController.class})
+@RestControllerAdvice(
+        assignableTypes = {
+            SesionAuthController.class,
+            RegistroAuthController.class,
+            RecuperacionAuthController.class
+        })
 public class ManejadorEntradaAuth extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler({IllegalStateException.class, DataAccessException.class})
@@ -32,6 +38,21 @@ public class ManejadorEntradaAuth extends ResponseEntityExceptionHandler {
                                 500,
                                 "ERROR_INTERNO",
                                 "No se pudo completar la solicitud",
+                                request.getRequestURI()));
+    }
+
+    @ExceptionHandler(RecuperacionException.class)
+    public ResponseEntity<ErrorResponse> recuperacion(
+            RecuperacionException ex, HttpServletRequest request) {
+        int status =
+                ex.getCodigo() == RecuperacionException.Codigo.CORREO_NO_DISPONIBLE ? 503 : 400;
+        return ResponseEntity.status(status)
+                .body(
+                        new ErrorResponse(
+                                Instant.now(),
+                                status,
+                                ex.getCodigo().name(),
+                                "No se pudo completar la recuperacion",
                                 request.getRequestURI()));
     }
 
