@@ -1,119 +1,101 @@
 package com.universidad.tests.domain.model;
 
-import com.universidad.tests.domain.exception.SubpruebaCerradaException;
 import java.time.Duration;
 import java.time.Instant;
 
-public class EvaluacionSubprueba {
-    private Long configuracionId;
-    private final Long id;
-    private final String evaluacionId;
-    private final String codigo;
-    private final String nombre;
-    private final int orden;
-    private final int duracionSegundos;
-    private EstadoSubprueba estado;
-    private final String instrucciones;
-    private final boolean permitirRetroceso;
-    private Instant fechaInicio;
-    private Instant fechaFinLimite;
-    private Instant fechaCierre;
-    private String letraInicial;
-    private int maximoEntradas = 75;
+// Subprueba dentro de una evaluacion: PENDIENTE -> ACTIVA -> CERRADA
+public record EvaluacionSubprueba(
+        Long idEvaluacionSubprueba,
+        Long idEvaluacion,
+        Long idConfiguracionSubprueba,
+        String codigo,
+        String nombre,
+        int orden,
+        int duracionSegundos,
+        EstadoSubprueba estado,
+        String instrucciones,
+        boolean permitirRetroceso,
+        Instant fechaInicio,
+        Instant fechaFinLimite,
+        Instant fechaCierre,
+        String letraInicial,
+        int maximoEntradas) {
 
-    public EvaluacionSubprueba(
-            Long id,
-            String evaluacionId,
+    public static EvaluacionSubprueba pendiente(
+            Long idConfiguracionSubprueba,
             String codigo,
             String nombre,
             int orden,
             int duracionSegundos,
-            EstadoSubprueba estado,
             String instrucciones,
             boolean permitirRetroceso,
-            Instant fechaInicio,
-            Instant fechaFinLimite,
-            Instant fechaCierre) {
-        this.id = id;
-        this.evaluacionId = evaluacionId;
-        this.codigo = codigo;
-        this.nombre = nombre;
-        this.orden = orden;
-        this.duracionSegundos = duracionSegundos;
-        this.estado = estado == null ? EstadoSubprueba.PENDIENTE : estado;
-        this.instrucciones = instrucciones;
-        this.permitirRetroceso = permitirRetroceso;
-        this.fechaInicio = fechaInicio;
-        this.fechaFinLimite = fechaFinLimite;
-        this.fechaCierre = fechaCierre;
+            String letraInicial,
+            int maximoEntradas) {
+        return new EvaluacionSubprueba(
+                null,
+                null,
+                idConfiguracionSubprueba,
+                codigo,
+                nombre,
+                orden,
+                duracionSegundos,
+                EstadoSubprueba.PENDIENTE,
+                instrucciones,
+                permitirRetroceso,
+                null,
+                null,
+                null,
+                letraInicial,
+                maximoEntradas);
     }
 
-    public void iniciar(Instant ahora) {
-        if (this.estado == EstadoSubprueba.CERRADA) {
-            throw new SubpruebaCerradaException("La subprueba " + codigo + " ya ha sido cerrada.");
-        }
-        if (this.estado == EstadoSubprueba.ACTIVA) {
-            return;
-        }
-        this.estado = EstadoSubprueba.ACTIVA;
-        this.fechaInicio = ahora.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
-        this.fechaFinLimite = fechaInicio.plus(Duration.ofSeconds(duracionSegundos));
+    public static EvaluacionSubprueba pendiente(
+            Long idConfiguracionSubprueba, String codigo, int ordenAplicacion) {
+        return pendiente(
+                idConfiguracionSubprueba, codigo, codigo, ordenAplicacion, 0, null, true, null, 75);
     }
 
-    public void cerrar(Instant ahora) {
-        if (this.estado == EstadoSubprueba.CERRADA) {
-            return;
-        }
-        this.estado = EstadoSubprueba.CERRADA;
-        this.fechaCierre = ahora;
+    public static EvaluacionSubprueba restaurar(
+            Long idEvaluacionSubprueba,
+            Long idConfiguracionSubprueba,
+            String codigo,
+            int ordenAplicacion,
+            EstadoSubprueba estado,
+            Instant iniciadaEn,
+            Instant finLimite,
+            Instant cerradaEn) {
+        return new EvaluacionSubprueba(
+                idEvaluacionSubprueba,
+                null,
+                idConfiguracionSubprueba,
+                codigo,
+                codigo,
+                ordenAplicacion,
+                0,
+                estado,
+                null,
+                true,
+                iniciadaEn,
+                finLimite,
+                cerradaEn,
+                null,
+                75);
     }
 
-    public boolean haExpirado(Instant ahora) {
-        return fechaFinLimite != null && !ahora.isBefore(fechaFinLimite);
-    }
-
-    public Long calcularSegundosRestantes(Instant ahora) {
+    // El tiempo restante lo calcula siempre el servidor; solo existe mientras esta ACTIVA
+    public Long segundosRestantes(Instant ahora) {
         if (estado != EstadoSubprueba.ACTIVA || fechaFinLimite == null) {
             return null;
         }
-        long restantes = Duration.between(ahora, fechaFinLimite).getSeconds();
-        return Math.max(0, restantes);
+        return Math.max(0, Duration.between(ahora, fechaFinLimite).getSeconds());
     }
 
-    public Long getConfiguracionId() {
-        return configuracionId;
+    public Long getIdEvaluacionSubprueba() {
+        return idEvaluacionSubprueba;
     }
 
-    public void setConfiguracionId(Long value) {
-        configuracionId = value;
-    }
-
-    public boolean esFluidezVerbal() {
-        return "FV".equalsIgnoreCase(codigo);
-    }
-
-    public String getLetraInicial() {
-        return letraInicial;
-    }
-
-    public void setLetraInicial(String letraInicial) {
-        this.letraInicial = letraInicial;
-    }
-
-    public int getMaximoEntradas() {
-        return maximoEntradas;
-    }
-
-    public void setMaximoEntradas(int maximoEntradas) {
-        this.maximoEntradas = maximoEntradas;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getEvaluacionId() {
-        return evaluacionId;
+    public Long getIdConfiguracionSubprueba() {
+        return idConfiguracionSubprueba;
     }
 
     public String getCodigo() {
@@ -128,31 +110,19 @@ public class EvaluacionSubprueba {
         return orden;
     }
 
-    public int getDuracionSegundos() {
-        return duracionSegundos;
+    public int getOrdenAplicacion() {
+        return orden;
     }
 
     public EstadoSubprueba getEstado() {
         return estado;
     }
 
-    public String getInstrucciones() {
-        return instrucciones;
+    public boolean estaActiva() {
+        return estado == EstadoSubprueba.ACTIVA;
     }
 
-    public boolean isPermitirRetroceso() {
-        return permitirRetroceso;
-    }
-
-    public Instant getFechaInicio() {
-        return fechaInicio;
-    }
-
-    public Instant getFechaFinLimite() {
+    public Instant getFinLimite() {
         return fechaFinLimite;
-    }
-
-    public Instant getFechaCierre() {
-        return fechaCierre;
     }
 }

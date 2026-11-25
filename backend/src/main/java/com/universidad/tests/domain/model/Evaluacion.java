@@ -1,110 +1,129 @@
 package com.universidad.tests.domain.model;
 
-import com.universidad.tests.domain.exception.RecursoNoEncontradoException;
-import com.universidad.tests.domain.exception.SubpruebaFueraDeOrdenException;
-import java.util.Collections;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
-public class Evaluacion {
-    private final String id;
-    private final String sujetoId;
-    private String estado;
-    private final List<EvaluacionSubprueba> subpruebas;
+public record Evaluacion(
+        Long idEvaluacion,
+        Long idSujeto,
+        Long idPeriodo,
+        Long idTest,
+        Long idVersionFormulario,
+        EstadoEvaluacion estado,
+        Instant fechaInicio,
+        Instant fechaFin,
+        List<EvaluacionSubprueba> subpruebas) {
 
-    public Evaluacion(
-            String id, String sujetoId, String estado, List<EvaluacionSubprueba> subpruebas) {
-        this.id = id;
-        this.sujetoId = sujetoId;
-        this.estado = estado;
-        this.subpruebas = subpruebas == null ? Collections.emptyList() : List.copyOf(subpruebas);
+    public Evaluacion {
+        subpruebas = subpruebas == null ? List.of() : List.copyOf(subpruebas);
     }
 
-    private String testId;
-    private String periodoId;
-    private String versionFormularioId;
-    private java.time.Instant fechaInicio;
-    private java.time.Instant fechaFin;
-
-    public String getTestId() {
-        return testId;
+    public static Evaluacion iniciar(
+            Long idSujeto,
+            Long idVersionFormulario,
+            Long idTest,
+            Long idPeriodo,
+            List<EvaluacionSubprueba> subpruebas,
+            Instant ahora) {
+        if (subpruebas == null || subpruebas.isEmpty()) {
+            throw new IllegalArgumentException("La evaluación debe incluir al menos una subprueba");
+        }
+        Set<Long> configuraciones = new HashSet<>();
+        for (EvaluacionSubprueba subprueba : subpruebas) {
+            if (subprueba.idConfiguracionSubprueba() != null
+                    && !configuraciones.add(subprueba.idConfiguracionSubprueba())) {
+                throw new IllegalArgumentException("Una configuración no puede repetirse");
+            }
+        }
+        List<EvaluacionSubprueba> ordenadas =
+                subpruebas.stream()
+                        .sorted(Comparator.comparingInt(EvaluacionSubprueba::orden))
+                        .toList();
+        return new Evaluacion(
+                null,
+                idSujeto,
+                idPeriodo,
+                idTest,
+                idVersionFormulario,
+                EstadoEvaluacion.EN_CURSO,
+                ahora,
+                null,
+                ordenadas);
     }
 
-    public void setTestId(String value) {
-        testId = value;
+    public static Evaluacion restaurar(
+            Long idEvaluacion,
+            Long idSujeto,
+            Long idVersionFormulario,
+            Long idTest,
+            Long idPeriodo,
+            EstadoEvaluacion estado,
+            Instant iniciadaEn,
+            Instant finalizadaEn,
+            List<EvaluacionSubprueba> subpruebas) {
+        if ((estado == EstadoEvaluacion.FINALIZADA) != (finalizadaEn != null)) {
+            throw new IllegalArgumentException("Solo una evaluación FINALIZADA tiene fecha de fin");
+        }
+        if (finalizadaEn != null && finalizadaEn.isBefore(iniciadaEn)) {
+            throw new IllegalArgumentException("La fecha de fin no puede ser anterior al inicio");
+        }
+        return new Evaluacion(
+                idEvaluacion,
+                idSujeto,
+                idPeriodo,
+                idTest,
+                idVersionFormulario,
+                estado,
+                iniciadaEn,
+                finalizadaEn,
+                subpruebas);
     }
 
-    public String getPeriodoId() {
-        return periodoId;
+    public Optional<EvaluacionSubprueba> subpruebaActiva() {
+        return subpruebas.stream().filter(s -> s.estado() == EstadoSubprueba.ACTIVA).findFirst();
     }
 
-    public void setPeriodoId(String value) {
-        periodoId = value;
+    public Optional<EvaluacionSubprueba> buscarSubprueba(String codigo) {
+        return subpruebas.stream().filter(s -> s.codigo().equals(codigo)).findFirst();
     }
 
-    public String getVersionFormularioId() {
-        return versionFormularioId;
+    public Long getIdEvaluacion() {
+        return idEvaluacion;
     }
 
-    public void setVersionFormularioId(String value) {
-        versionFormularioId = value;
+    public Long getIdSujeto() {
+        return idSujeto;
     }
 
-    public java.time.Instant getFechaInicio() {
+    public Long getIdPeriodo() {
+        return idPeriodo;
+    }
+
+    public Long getIdTest() {
+        return idTest;
+    }
+
+    public Long getIdVersionFormulario() {
+        return idVersionFormulario;
+    }
+
+    public EstadoEvaluacion getEstado() {
+        return estado;
+    }
+
+    public Instant getIniciadaEn() {
         return fechaInicio;
     }
 
-    public void setFechaInicio(java.time.Instant value) {
-        fechaInicio = value;
-    }
-
-    public java.time.Instant getFechaFin() {
+    public Instant getFinalizadaEn() {
         return fechaFin;
-    }
-
-    public void setFechaFin(java.time.Instant value) {
-        fechaFin = value;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getSujetoId() {
-        return sujetoId;
-    }
-
-    public String getEstado() {
-        return estado;
     }
 
     public List<EvaluacionSubprueba> getSubpruebas() {
         return subpruebas;
-    }
-
-    public EvaluacionSubprueba buscarSubprueba(String codigo) {
-        return subpruebas.stream()
-                .filter(s -> s.getCodigo().equalsIgnoreCase(codigo))
-                .findFirst()
-                .orElseThrow(
-                        () ->
-                                new RecursoNoEncontradoException(
-                                        "SUBPRUEBA_NO_ENCONTRADA",
-                                        "Subprueba no encontrada: " + codigo));
-    }
-
-    public void validarOrdenSubprueba(String codigo) {
-        EvaluacionSubprueba objetivo = buscarSubprueba(codigo);
-        for (EvaluacionSubprueba sub : subpruebas) {
-            if (sub.getOrden() < objetivo.getOrden()
-                    && sub.getEstado() != EstadoSubprueba.CERRADA) {
-                throw new SubpruebaFueraDeOrdenException(
-                        "SUBPRUEBA_FUERA_DE_ORDEN",
-                        "No se permite iniciar la subprueba "
-                                + codigo
-                                + " porque la subprueba anterior "
-                                + sub.getCodigo()
-                                + " aún no ha finalizado.");
-            }
-        }
     }
 }
