@@ -19,5 +19,9 @@ public interface OpcionRespuestaRepository {
 
     OpcionRespuesta guardar(OpcionRespuesta opcion);
 
-    void eliminarPorId(Long idOpcion);
+    interface Edicion extends OpcionRespuestaRepository {
+        void bloquearVersion(Long idVersion);
+
+        void eliminarPorId(Long idOpcion);
+    }
 }

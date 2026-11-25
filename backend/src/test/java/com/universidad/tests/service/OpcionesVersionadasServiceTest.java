@@ -3,11 +3,10 @@ package com.universidad.tests.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.universidad.tests.application.service.EdicionContenidoVersionadoService;
+import com.universidad.tests.application.service.AutorizacionService;
 import com.universidad.tests.application.service.OpcionesVersionadasService;
 import com.universidad.tests.application.service.OpcionesVersionadasService.DatosOpcion;
 import com.universidad.tests.domain.model.*;
-import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 import com.universidad.tests.domain.repository.*;
 import java.util.List;
 import java.util.Optional;
@@ -18,8 +17,8 @@ class OpcionesVersionadasServiceTest {
     void noModificaUnaVersionPublicada() {
         VersionFormularioRepository versiones = mock(VersionFormularioRepository.class);
         PreguntaRepository preguntas = mock(PreguntaRepository.class);
-        OpcionRespuestaRepository opciones = mock(OpcionRespuestaRepository.class);
-        EdicionContenidoVersionadoService edicion = mock(EdicionContenidoVersionadoService.class);
+        OpcionRespuestaRepository.Edicion opciones = mock(OpcionRespuestaRepository.Edicion.class);
+        AutorizacionService autorizacion = mock(AutorizacionService.class);
         VersionFormulario publicada = new VersionFormulario(11L, 1L, "v2", null, "DOC");
         publicada.publicar("ACTA");
         when(versiones.buscarPorId(11L)).thenReturn(Optional.of(publicada));
@@ -29,12 +28,14 @@ class OpcionesVersionadasServiceTest {
                         mock(ConfiguracionSubpruebaRepository.class),
                         preguntas,
                         opciones,
-                        mock(AutorizacionContenidoPort.class),
-                        edicion);
+                        autorizacion);
 
         assertThrows(
                 IllegalStateException.class,
                 () -> servicio.guardar(11L, 120L, List.of(new DatosOpcion("A", 1, "Uno", null))));
-        verifyNoInteractions(preguntas, opciones, edicion);
+        verify(autorizacion).exigirPermiso("OPCIONES_EDITAR");
+        verify(opciones).bloquearVersion(11L);
+        verifyNoMoreInteractions(opciones);
+        verifyNoInteractions(preguntas);
     }
 }

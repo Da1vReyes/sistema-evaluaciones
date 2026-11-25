@@ -6,13 +6,14 @@ import com.universidad.tests.domain.model.OpcionRespuesta;
 import com.universidad.tests.domain.model.Pregunta;
 import com.universidad.tests.domain.model.TipoRespuesta;
 import com.universidad.tests.domain.model.VersionFormulario;
-import com.universidad.tests.domain.port.AutorizacionContenidoPort;
 import com.universidad.tests.domain.repository.ConfiguracionSubpruebaRepository;
 import com.universidad.tests.domain.repository.OpcionRespuestaRepository;
 import com.universidad.tests.domain.repository.PreguntaRepository;
 import com.universidad.tests.domain.repository.VersionFormularioRepository;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
@@ -24,27 +25,25 @@ public class OpcionesVersionadasService {
     private final VersionFormularioRepository versiones;
     private final ConfiguracionSubpruebaRepository configuraciones;
     private final PreguntaRepository preguntas;
-    private final OpcionRespuestaRepository opciones;
-    private final AutorizacionContenidoPort autorizacion;
-    private final EdicionContenidoVersionadoService edicion;
+    private final OpcionRespuestaRepository.Edicion opciones;
+    private final AutorizacionService autorizacion;
 
     public OpcionesVersionadasService(
             VersionFormularioRepository versiones,
             ConfiguracionSubpruebaRepository configuraciones,
             PreguntaRepository preguntas,
-            OpcionRespuestaRepository opciones,
-            AutorizacionContenidoPort autorizacion,
-            EdicionContenidoVersionadoService edicion) {
+            OpcionRespuestaRepository.Edicion opciones,
+            AutorizacionService autorizacion) {
         this.versiones = versiones;
         this.configuraciones = configuraciones;
         this.preguntas = preguntas;
         this.opciones = opciones;
         this.autorizacion = autorizacion;
-        this.edicion = edicion;
     }
 
     @Transactional
     public List<DatosOpcion> guardar(Long idVersion, Long idPregunta, List<DatosOpcion> datos) {
+        autorizacion.exigirPermiso("OPCIONES_EDITAR");
         if (idVersion == null || idVersion <= 0 || idPregunta == null || idPregunta <= 0) {
             throw new IllegalArgumentException("Los identificadores deben ser positivos");
         }
@@ -57,6 +56,7 @@ public class OpcionesVersionadasService {
             if (dato == null
                     || dato.letra() == null
                     || dato.letra().isBlank()
+                    || dato.letra().codePointCount(0, dato.letra().length()) > 40
                     || dato.orden() <= 0
                     || !codigos.add(dato.letra())
                     || !ordenes.add(dato.orden())) {
@@ -64,7 +64,7 @@ public class OpcionesVersionadasService {
                         "Las letras y los ordenes deben ser unicos y validos");
             }
         }
-        autorizacion.exigirPermisoEditarContenido(idVersion);
+        opciones.bloquearVersion(idVersion);
         VersionFormulario version =
                 versiones
                         .buscarPorId(idVersion)
@@ -93,25 +93,46 @@ public class OpcionesVersionadasService {
                     "La cantidad de opciones no coincide con la configuracion");
         }
         List<OpcionRespuesta> anteriores = opciones.listarPorPregunta(idPregunta);
+        Map<String, Integer> ordenFinal = new HashMap<>();
         for (DatosOpcion dato : datos) {
-            OpcionRespuesta anterior =
-                    anteriores.stream()
-                            .filter(o -> o.getCodigo().equals(dato.letra()))
-                            .findFirst()
-                            .orElse(null);
-            edicion.guardarOpcion(
+            ordenFinal.put(dato.letra(), dato.orden());
+        }
+        Map<String, Long> ids = new HashMap<>();
+        for (OpcionRespuesta anterior : anteriores) {
+            ordenes.add(anterior.getOrdenPresentacion());
+        }
+        // Liberar los puestos que cambian antes de aplicar el orden definitivo.
+        int temporal = 1;
+        for (OpcionRespuesta anterior : anteriores) {
+            Integer destino = ordenFinal.get(anterior.getCodigo());
+            if (destino == null) {
+                opciones.eliminarPorId(anterior.getIdOpcion());
+                continue;
+            }
+            ids.put(anterior.getCodigo(), anterior.getIdOpcion());
+            if (destino != anterior.getOrdenPresentacion()) {
+                while (ordenes.contains(temporal)) {
+                    temporal++;
+                }
+                opciones.guardar(
+                        new OpcionRespuesta(
+                                anterior.getIdOpcion(),
+                                idPregunta,
+                                anterior.getCodigo(),
+                                temporal++,
+                                anterior.getTexto(),
+                                anterior.getRecursoRef()));
+            }
+        }
+        for (DatosOpcion dato : datos) {
+            opciones.guardar(
                     new OpcionRespuesta(
-                            anterior == null ? null : anterior.getIdOpcion(),
+                            ids.get(dato.letra()),
                             idPregunta,
                             dato.letra(),
                             dato.orden(),
                             dato.texto(),
                             dato.recursoRef()));
-        }
-        for (OpcionRespuesta anterior : anteriores) {
-            if (!codigos.contains(anterior.getCodigo())) {
-                opciones.eliminarPorId(anterior.getIdOpcion());
-            }
         }
         return opciones.listarPorPregunta(idPregunta).stream()
                 .map(
