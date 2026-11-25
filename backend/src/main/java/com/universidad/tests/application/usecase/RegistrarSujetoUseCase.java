@@ -6,11 +6,9 @@ import com.universidad.tests.domain.exception.TipoErrorNegocio;
 import com.universidad.tests.domain.model.Sujeto;
 import com.universidad.tests.domain.port.AutorizacionSujetoPort;
 import com.universidad.tests.domain.repository.SujetoRepository;
-
+import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
 
 /** E18 — Registrar a la persona evaluada sin crear cuenta ni abrir evaluación (CU-GEN-20). */
 @Service

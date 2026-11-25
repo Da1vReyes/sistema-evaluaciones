@@ -11,16 +11,14 @@ import com.universidad.tests.domain.exception.ErrorNegocioException;
 import com.universidad.tests.domain.model.Sujeto;
 import com.universidad.tests.domain.port.AutorizacionSujetoPort;
 import com.universidad.tests.domain.repository.SujetoRepository;
-
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class SujetoUseCasesTest {

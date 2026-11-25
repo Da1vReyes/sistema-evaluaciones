@@ -8,7 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.universidad.tests.application.service.AutenticacionService;
 import com.universidad.tests.application.service.IdentidadSesion;
-
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,10 +20,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 
 /** HTTP y PostgreSQL reales. Solo se sustituye la validación del token, no la autorización. */
 @SpringBootTest

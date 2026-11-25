@@ -9,10 +9,12 @@ import com.universidad.tests.domain.exception.SinPermisoException;
 import com.universidad.tests.domain.exception.TipoErrorNegocio;
 import com.universidad.tests.dto.response.ErrorResponse;
 import com.universidad.tests.dto.response.ErrorResponse.DetalleCampo;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
-
+import java.sql.SQLException;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -29,11 +31,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.sql.SQLException;
-import java.time.Clock;
-import java.time.Instant;
-import java.util.List;
 
 /**
  * Errores de los controladores de GEN-02-BE (E3, E19 y E21), con el formato común del Documento

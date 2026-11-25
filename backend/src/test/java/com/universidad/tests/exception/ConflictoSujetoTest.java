@@ -6,7 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.universidad.tests.controller.SujetoController;
 import com.universidad.tests.dto.request.SujetoRequest;
 import com.universidad.tests.dto.response.SujetoResponse;
-
+import java.sql.SQLException;
+import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.context.annotation.Profile;
@@ -16,9 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.*;
-
-import java.sql.SQLException;
-import java.time.Clock;
 
 class ConflictoSujetoTest {
     @Test
@@ -54,7 +52,7 @@ class ConflictoSujetoTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"identificadorInstitucional\":\"FICTICIO-ERROR\",\"nombres\":\"Persona"
-                                            + " Ficticia\",\"apellidos\":\"Prueba\"}"))
+                                                + " Ficticia\",\"apellidos\":\"Prueba\"}"))
                 .andExpect(status().is(http))
                 .andExpect(jsonPath("$.codigo").value(codigo));
     }

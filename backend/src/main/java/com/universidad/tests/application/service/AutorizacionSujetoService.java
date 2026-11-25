@@ -1,7 +1,6 @@
 package com.universidad.tests.application.service;
 
 import com.universidad.tests.domain.port.AutorizacionSujetoPort;
-
 import org.springframework.stereotype.Service;
 
 /** Permisos E18 y E23 del contrato; no depende del adaptador provisional de evaluaciones. */
