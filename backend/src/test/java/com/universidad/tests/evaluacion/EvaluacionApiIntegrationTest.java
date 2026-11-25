@@ -41,6 +41,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,10 @@ class EvaluacionApiIntegrationTest {
     private Map<String, ConfiguracionSubpruebaJpaEntity> configuraciones;
     private Long sujetoId;
     private Long periodoId;
+    private Long cuentaId;
+    private String rolPrueba = "COORDINADOR";
+    private Set<String> permisosPrueba =
+            Set.of("OPERACION_AUTORIZAR", "RECUPERAR_INTENTO", "SUJETO_LEER", "PERIODO_LEER");
 
     @BeforeEach
     void prepararCatalogo() {
@@ -98,6 +103,18 @@ class EvaluacionApiIntegrationTest {
         configuraciones = configuracionesDe(version);
         sujetoId = crearSujeto("Ana", "Ruiz");
         periodoId = crearPeriodo(true);
+        cuentaId =
+                jdbc.queryForObject(
+                        "insert into cuenta(correo,resumen_contrasena,nombres,apellidos,estado) values (?,?,?,?,'ACTIVA') returning id_cuenta",
+                        Long.class,
+                        "alcance-" + java.util.UUID.randomUUID() + "@ejemplo.test",
+                        "hash-ficticio-sin-credencial",
+                        "Persona",
+                        "Ficticia");
+        jdbc.update(
+                "insert into cuenta_sujeto_asignado(id_cuenta,id_sujeto) values (?,?)",
+                cuentaId,
+                sujetoId);
     }
 
     // ---------- E3: crear ----------
@@ -192,8 +209,8 @@ class EvaluacionApiIntegrationTest {
         Map<String, Object> sinSujeto = cuerpo(null, null);
         sinSujeto.put("sujetoId", 999_999_999L);
         ejecutar(iniciar(sinSujeto))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.codigo").value("SUJETO_NO_ENCONTRADO"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SIN_PERMISO"));
 
         Map<String, Object> sinPeriodo = cuerpo(null, null);
         sinPeriodo.put("periodoId", 999_999_999L);
@@ -361,8 +378,8 @@ class EvaluacionApiIntegrationTest {
                 .andExpect(jsonPath("$.apellidos").value("Ruiz"));
 
         ejecutar(get("/api/v1/sujetos/{id}", 999_999_999L))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.codigo").value("SUJETO_NO_ENCONTRADO"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SIN_PERMISO"));
 
         Long cerrado = crearPeriodo(false);
         ejecutar(get("/api/v1/periodos").param("disponible", "true"))
@@ -396,6 +413,56 @@ class EvaluacionApiIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void e3DeniegaSesionSinPermisoRealYNoEscribe() throws Exception {
+        permisosPrueba = Set.of();
+        ejecutar(iniciar(cuerpo(null, null)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SIN_PERMISO"));
+        assertThat(contar("evaluacion where id_sujeto = " + sujetoId)).isZero();
+    }
+
+    @Test
+    void e3DeniegaPermisoSinAsignacionYNoEscribe() throws Exception {
+        jdbc.update("delete from cuenta_sujeto_asignado where id_cuenta=?", cuentaId);
+        ejecutar(iniciar(cuerpo(null, null))).andExpect(status().isForbidden());
+        assertThat(contar("evaluacion where id_sujeto = " + sujetoId)).isZero();
+    }
+
+    @Test
+    void e4NoExponeDatosCuandoSeRetiraLaAsignacion() throws Exception {
+        long id =
+                idDe(
+                        ejecutar(iniciar(cuerpo(null, null)))
+                                .andExpect(status().isCreated())
+                                .andReturn());
+        jdbc.update("delete from cuenta_sujeto_asignado where id_cuenta=?", cuentaId);
+        ejecutar(get("/api/v1/evaluaciones/" + id))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.id").doesNotExist());
+    }
+
+    @Test
+    void e4DeniegaAunqueConserveAsignacionSiFaltaPermiso() throws Exception {
+        long id =
+                idDe(
+                        ejecutar(iniciar(cuerpo(null, null)))
+                                .andExpect(status().isCreated())
+                                .andReturn());
+        permisosPrueba = Set.of("SUJETO_LEER");
+        ejecutar(get("/api/v1/evaluaciones/" + id)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void decanoAsignadoSoloRecibeIdentificacionInstitucional() throws Exception {
+        rolPrueba = "DECANO";
+        permisosPrueba = Set.of("SUJETO_LEER");
+        ejecutar(get("/api/v1/sujetos/" + sujetoId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombres").doesNotExist())
+                .andExpect(jsonPath("$.apellidos").doesNotExist());
+    }
+
     // ---------- Datos ficticios ----------
 
     private ResultActions ejecutar(RequestBuilder solicitud) throws Exception {
@@ -403,7 +470,7 @@ class EvaluacionApiIntegrationTest {
         when(autenticacion.validar("token-ficticio"))
                 .thenReturn(
                         java.util.Optional.of(
-                                new IdentidadSesion(1L, 1L, "SUJETO", java.util.Set.of())));
+                                new IdentidadSesion(cuentaId, 1L, rolPrueba, permisosPrueba)));
         return mockMvc.perform(
                 context -> {
                     var peticion = solicitud.buildRequest(context);
