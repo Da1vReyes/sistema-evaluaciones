@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -18,8 +19,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.universidad.tests.application.service.AutenticacionService;
 import com.universidad.tests.application.service.IdentidadSesion;
+import com.universidad.tests.domain.exception.SinPermisoException;
 import com.universidad.tests.domain.model.EstadoVersionFormulario;
 import com.universidad.tests.domain.model.TipoRespuesta;
+import com.universidad.tests.domain.port.AutorizacionEvaluacionPort;
 import com.universidad.tests.infrastructure.persistence.entity.ConfiguracionSubpruebaJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.PeriodoJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.SubpruebaJpaEntity;
@@ -48,6 +51,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
@@ -69,6 +73,7 @@ class EvaluacionApiIntegrationTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private AutenticacionService autenticacion;
+    @MockitoSpyBean private AutorizacionEvaluacionPort autorizacionEvaluacion;
     @Autowired private ObjectMapper json;
     @Autowired private JdbcTemplate jdbc;
     @PersistenceContext private EntityManager entityManager;
@@ -264,6 +269,69 @@ class EvaluacionApiIntegrationTest {
                         String.class,
                         idDe(resultado));
         assertThat(letra).isEqualTo("M");
+    }
+
+    @Test
+    void e3Devuelve403CuandoElPuertoDeniegaLaCreacion() throws Exception {
+        doThrow(new SinPermisoException())
+                .when(autorizacionEvaluacion)
+                .exigirPermisoIniciarEvaluacion(sujetoId);
+
+        ejecutar(iniciar(cuerpo(null, null)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SIN_PERMISO"));
+
+        assertThat(contar("evaluacion where id_sujeto = " + sujetoId)).isZero();
+    }
+
+    @Test
+    void e3RechazaLaCreacionSinToken() throws Exception {
+        mockMvc.perform(iniciar(cuerpo(null, null)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"));
+
+        assertThat(contar("evaluacion where id_sujeto = " + sujetoId)).isZero();
+    }
+
+    // ---------- E4: consultar ----------
+
+    @Test
+    void e4ConsultaLaEvaluacionPersistidaPorE3() throws Exception {
+        MvcResult creada =
+                ejecutar(iniciar(cuerpo(null, null))).andExpect(status().isCreated()).andReturn();
+        long id = idDe(creada);
+        String ruta = "/api/v1/evaluaciones/" + id;
+        assertThat(creada.getResponse().getHeader("Location")).isEqualTo(ruta);
+        entityManager.flush();
+        entityManager.clear();
+
+        ejecutar(get(ruta))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.testId").value(test.getIdTest()))
+                .andExpect(
+                        jsonPath("$.versionFormularioId").value(version.getIdVersionFormulario()))
+                .andExpect(jsonPath("$.sujetoId").value(sujetoId))
+                .andExpect(jsonPath("$.periodoId").value(periodoId))
+                .andExpect(jsonPath("$.estado").value("EN_CURSO"))
+                .andExpect(jsonPath("$.subpruebaActiva").value(nullValue()))
+                .andExpect(jsonPath("$.subpruebas[*].codigo", contains("VOC1", "VOC2", "CV")))
+                .andExpect(
+                        jsonPath(
+                                "$.subpruebas[*].estado",
+                                contains("PENDIENTE", "PENDIENTE", "PENDIENTE")));
+    }
+
+    @Test
+    void e4RechazaLaConsultaSinToken() throws Exception {
+        MvcResult creada =
+                ejecutar(iniciar(cuerpo(null, null))).andExpect(status().isCreated()).andReturn();
+
+        mockMvc.perform(get("/api/v1/evaluaciones/{id}", idDe(creada)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                .andExpect(jsonPath("$.codigo").value("NO_AUTENTICADO"));
     }
 
     // ---------- E2, E19 y E21 ----------
