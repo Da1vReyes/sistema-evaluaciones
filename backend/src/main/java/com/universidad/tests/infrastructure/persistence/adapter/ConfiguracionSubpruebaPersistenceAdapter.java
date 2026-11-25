@@ -129,8 +129,7 @@ public class ConfiguracionSubpruebaPersistenceAdapter implements ConfiguracionSu
                             configuracion.getTipoRespuesta(),
                             configuracion.getInstruccionesRef(),
                             configuracion.getPracticaRef(),
-                            configuracion.getMaximoEntradas(),
-                            configuracion.getOpcionesEsperadas());
+                            configuracion.getMaximoEntradas());
 
         } else {
 
@@ -161,8 +160,7 @@ public class ConfiguracionSubpruebaPersistenceAdapter implements ConfiguracionSu
                     configuracion.getTipoRespuesta(),
                     configuracion.getInstruccionesRef(),
                     configuracion.getPracticaRef(),
-                    configuracion.getMaximoEntradas(),
-                    configuracion.getOpcionesEsperadas());
+                    configuracion.getMaximoEntradas());
         }
 
         return aDominio(configuracionRepository.saveAndFlush(entidad));
@@ -187,7 +185,6 @@ public class ConfiguracionSubpruebaPersistenceAdapter implements ConfiguracionSu
                 entidad.getTipoRespuesta(),
                 entidad.getInstruccionesRef(),
                 entidad.getPracticaRef(),
-                entidad.getMaximoEntradas(),
-                entidad.getOpcionesEsperadas());
+                entidad.getMaximoEntradas());
     }
 }

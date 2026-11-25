@@ -1,15 +1,17 @@
 package com.universidad.tests.application.service;
 
-import com.universidad.tests.application.port.ConsultaBaremoBFAParaConversionPort;
-import com.universidad.tests.application.port.ConsultaBaremoBFAParaConversionPort.BaremoCandidato;
 import com.universidad.tests.application.service.ConversionPercentilBFAService.EstadoNormativo;
 import com.universidad.tests.application.service.ConversionPercentilBFAService.ResultadoConversion;
+import com.universidad.tests.domain.port.ConsultaBaremoBFAParaConversionPort;
+import com.universidad.tests.domain.port.ConsultaBaremoBFAParaConversionPort.BaremoCandidato;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.stereotype.Service;
 
+@Service
 public class AplicarBaremoBFAService {
 
     private final ConsultaBaremoBFAParaConversionPort consultaBaremos;

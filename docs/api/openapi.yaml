@@ -775,11 +775,6 @@ paths:
       description: Crea una VersionFormulario en BORRADOR a partir de la última PUBLICADA. CU-GEN-05. Permiso CONFIGURAR_BFA.
       parameters:
         - $ref: '#/components/parameters/TestId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CrearVersionRequest' }
       responses:
         '201':
           description: Versión creada.
@@ -787,16 +782,10 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VersionFormularioResponse' }
               example: { id: 11, testId: 1, estado: BORRADOR }
-        '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404':
           description: TEST_NO_ENCONTRADO.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
-        '409':
-          description: Ya existe ese código de versión para el test.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -959,11 +948,6 @@ paths:
         '400': { $ref: '#/components/responses/SolicitudInvalida' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
-        '409':
-          description: BAREMO_DUPLICADO — ya existe el nombre y la versión.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '422':
           description: BAREMO_INVALIDO — rangos superpuestos o incompletos.
           content:
@@ -1435,14 +1419,6 @@ components:
         testId: { type: integer, format: int64, example: 1 }
         estado: { type: string, enum: [BORRADOR, PUBLICADA, RETIRADA], example: BORRADOR }
 
-    CrearVersionRequest:
-      type: object
-      required: [codigoVersion, fuenteRef]
-      properties:
-        codigoVersion: { type: string, example: 'v2' }
-        descripcion: { type: string, nullable: true }
-        fuenteRef: { type: string, description: Referencia a la fuente autorizada. }
-
     ConfiguracionSubpruebaRequest:
       type: object
       properties:
@@ -1479,16 +1455,7 @@ components:
       properties:
         opciones:
           type: array
-          items: { $ref: '#/components/schemas/OpcionVersionadaRequest' }
-
-    OpcionVersionadaRequest:
-      type: object
-      required: [letra, orden]
-      properties:
-        letra: { type: string, example: A }
-        orden: { type: integer, minimum: 1, example: 1 }
-        texto: { type: string, nullable: true }
-        recursoRef: { type: string, nullable: true }
+          items: { $ref: '#/components/schemas/OpcionRespuesta' }
 
     ClaveRequest:
       type: object

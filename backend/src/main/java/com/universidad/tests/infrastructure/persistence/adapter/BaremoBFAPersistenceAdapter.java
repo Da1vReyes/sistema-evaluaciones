@@ -21,6 +21,11 @@ public class BaremoBFAPersistenceAdapter implements BaremoBFARepository {
     }
 
     @Override
+    public boolean existePorId(Long idBaremo) {
+        return baremos.existsById(idBaremo);
+    }
+
+    @Override
     public boolean existePorNombreYVersion(String nombre, String version) {
         return baremos.existsByNombreAndVersion(nombre, version);
     }

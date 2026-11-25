@@ -5,14 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import com.universidad.tests.application.port.ConsultaBaremoBFAParaConversionPort;
-import com.universidad.tests.application.port.ConsultaBaremoBFAParaConversionPort.BaremoCandidato;
 import com.universidad.tests.application.service.AplicarBaremoBFAService;
 import com.universidad.tests.application.service.AplicarBaremoBFAService.ResultadoAplicacion;
 import com.universidad.tests.application.service.AplicarBaremoBFAService.ResultadoRevision;
 import com.universidad.tests.application.service.ConversionPercentilBFAService;
 import com.universidad.tests.application.service.ConversionPercentilBFAService.EstadoNormativo;
-import com.universidad.tests.application.service.ConversionPercentilBFAService.RangoCandidato;
+import com.universidad.tests.domain.port.ConsultaBaremoBFAParaConversionPort;
+import com.universidad.tests.domain.port.ConsultaBaremoBFAParaConversionPort.BaremoCandidato;
+import com.universidad.tests.domain.port.ConsultaBaremoBFAParaConversionPort.RangoCandidato;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

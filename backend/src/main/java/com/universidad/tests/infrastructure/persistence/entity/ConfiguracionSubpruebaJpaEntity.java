@@ -49,9 +49,6 @@ public class ConfiguracionSubpruebaJpaEntity {
     @Column(name = "maximo_entradas")
     private Integer maximoEntradas;
 
-    @Column(name = "opciones_esperadas")
-    private Integer opcionesEsperadas;
-
     protected ConfiguracionSubpruebaJpaEntity() {
         // Constructor requerido por JPA
     }
@@ -65,28 +62,6 @@ public class ConfiguracionSubpruebaJpaEntity {
             String instruccionesRef,
             String practicaRef,
             Integer maximoEntradas) {
-        this(
-                versionFormulario,
-                subprueba,
-                ordenAplicacion,
-                tiempoLimiteSegundos,
-                tipoRespuesta,
-                instruccionesRef,
-                practicaRef,
-                maximoEntradas,
-                null);
-    }
-
-    public ConfiguracionSubpruebaJpaEntity(
-            VersionFormularioJpaEntity versionFormulario,
-            SubpruebaJpaEntity subprueba,
-            int ordenAplicacion,
-            Integer tiempoLimiteSegundos,
-            TipoRespuesta tipoRespuesta,
-            String instruccionesRef,
-            String practicaRef,
-            Integer maximoEntradas,
-            Integer opcionesEsperadas) {
 
         if (versionFormulario == null) {
             throw new IllegalArgumentException("La version del formulario es obligatoria");
@@ -125,10 +100,6 @@ public class ConfiguracionSubpruebaJpaEntity {
                     "Las respuestas de seleccion no utilizan maximoEntradas");
         }
 
-        if (opcionesEsperadas != null && opcionesEsperadas <= 0) {
-            throw new IllegalArgumentException("El numero de opciones debe ser positivo");
-        }
-
         this.versionFormulario = versionFormulario;
         this.subprueba = subprueba;
         this.ordenAplicacion = ordenAplicacion;
@@ -137,7 +108,6 @@ public class ConfiguracionSubpruebaJpaEntity {
         this.instruccionesRef = instruccionesRef;
         this.practicaRef = practicaRef;
         this.maximoEntradas = maximoEntradas;
-        this.opcionesEsperadas = opcionesEsperadas;
     }
 
     public Long getIdConfiguracionSubprueba() {
@@ -184,10 +154,6 @@ public class ConfiguracionSubpruebaJpaEntity {
         return maximoEntradas;
     }
 
-    public Integer getOpcionesEsperadas() {
-        return opcionesEsperadas;
-    }
-
     public boolean tieneTiempoLimite() {
         return tiempoLimiteSegundos != null;
     }
@@ -199,24 +165,6 @@ public class ConfiguracionSubpruebaJpaEntity {
             String instruccionesRef,
             String practicaRef,
             Integer maximoEntradas) {
-        actualizarDatos(
-                ordenAplicacion,
-                tiempoLimiteSegundos,
-                tipoRespuesta,
-                instruccionesRef,
-                practicaRef,
-                maximoEntradas,
-                null);
-    }
-
-    public void actualizarDatos(
-            int ordenAplicacion,
-            Integer tiempoLimiteSegundos,
-            TipoRespuesta tipoRespuesta,
-            String instruccionesRef,
-            String practicaRef,
-            Integer maximoEntradas,
-            Integer opcionesEsperadas) {
 
         if (ordenAplicacion <= 0) {
             throw new IllegalArgumentException("El orden de aplicacion debe ser positivo");
@@ -246,16 +194,11 @@ public class ConfiguracionSubpruebaJpaEntity {
             throw new IllegalArgumentException("SELECCION no admite maximoEntradas");
         }
 
-        if (opcionesEsperadas != null && opcionesEsperadas <= 0) {
-            throw new IllegalArgumentException("El numero de opciones debe ser positivo");
-        }
-
         this.ordenAplicacion = ordenAplicacion;
         this.tiempoLimiteSegundos = tiempoLimiteSegundos;
         this.tipoRespuesta = tipoRespuesta;
         this.instruccionesRef = instruccionesRef;
         this.practicaRef = practicaRef;
         this.maximoEntradas = maximoEntradas;
-        this.opcionesEsperadas = opcionesEsperadas;
     }
 }

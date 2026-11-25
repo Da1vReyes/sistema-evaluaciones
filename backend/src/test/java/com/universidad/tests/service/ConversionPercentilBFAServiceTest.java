@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.universidad.tests.application.service.ConversionPercentilBFAService;
 import com.universidad.tests.application.service.ConversionPercentilBFAService.EstadoNormativo;
-import com.universidad.tests.application.service.ConversionPercentilBFAService.RangoCandidato;
 import com.universidad.tests.application.service.ConversionPercentilBFAService.ResultadoConversion;
+import com.universidad.tests.domain.port.ConsultaBaremoBFAParaConversionPort.RangoCandidato;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
