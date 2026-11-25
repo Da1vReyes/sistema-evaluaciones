@@ -2,6 +2,7 @@ package com.universidad.tests.infrastructure.persistence.adapter;
 
 import com.universidad.tests.domain.port.RecuperacionCuentaPort;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +22,10 @@ public class RecuperacionCuentaJdbcAdapter implements RecuperacionCuentaPort {
     public void reemplazar(Long id, String resumen, Instant ahora, Instant expira) {
         jdbc.queryForObject(
                 "select id_cuenta from cuenta where id_cuenta = ? for update", Long.class, id);
+        // Medir la vigencia al adquirir el bloqueo, no antes de esperar por otra solicitud.
+        Instant bloqueoAdquirido = Instant.now();
+        expira = bloqueoAdquirido.plus(Duration.between(ahora, expira));
+        ahora = bloqueoAdquirido;
         jdbc.update(
                 "update recuperacion_cuenta set usada_en = ? where id_cuenta = ? and usada_en is null",
                 Timestamp.from(ahora),
@@ -44,6 +49,7 @@ public class RecuperacionCuentaJdbcAdapter implements RecuperacionCuentaPort {
                         resumen);
         if (ids.isEmpty()) return false;
         Long id = ids.get(0);
+        ahora = Instant.now();
         int usadas =
                 jdbc.update(
                         "update recuperacion_cuenta set usada_en=? where resumen_token=? and usada_en is null and expira_en>? and exists(select 1 from cuenta c where c.id_cuenta=recuperacion_cuenta.id_cuenta and c.estado='ACTIVA')",
