@@ -85,6 +85,7 @@ class EvaluacionApiIntegrationTest {
     private Map<String, ConfiguracionSubpruebaJpaEntity> configuraciones;
     private Long sujetoId;
     private Long periodoId;
+    private Long idCuenta;
 
     @BeforeEach
     void prepararCatalogo() {
@@ -93,6 +94,15 @@ class EvaluacionApiIntegrationTest {
         configuraciones = configuracionesDe(version);
         sujetoId = crearSujeto("Ana", "Ruiz");
         periodoId = crearPeriodo(true);
+        idCuenta =
+                jdbc.queryForObject(
+                        """
+                        insert into cuenta (correo, resumen_contrasena, nombres, apellidos, estado)
+                        values (?, 'resumen-ficticio', 'Cuenta', 'Ficticia', 'ACTIVA')
+                        returning id_cuenta
+                        """,
+                        Long.class,
+                        "auditoria-" + corto() + "@example.test");
     }
 
     // ---------- E3: crear ----------
@@ -152,7 +162,11 @@ class EvaluacionApiIntegrationTest {
 
     @Test
     void noDuplicaLaEvaluacionAbiertaDelMismoSujetoTestYPeriodo() throws Exception {
-        ejecutar(iniciar(cuerpo(null, null))).andExpect(status().isCreated());
+        long id =
+                idDe(
+                        ejecutar(iniciar(cuerpo(null, null)))
+                                .andExpect(status().isCreated())
+                                .andReturn());
 
         ejecutar(iniciar(cuerpo(null, null)))
                 .andExpect(status().isConflict())
@@ -160,6 +174,28 @@ class EvaluacionApiIntegrationTest {
                 .andExpect(jsonPath("$.ruta").value("/api/v1/evaluaciones"));
 
         assertThat(contar("evaluacion where id_sujeto = " + sujetoId)).isEqualTo(1);
+        assertThat(
+                        jdbc.queryForList(
+                                """
+                                select id_cuenta, accion, entidad_tipo, entidad_id, id_evaluacion,
+                                       ocurrido_en is not null as fechado
+                                from evento_auditoria where id_cuenta = ?
+                                """,
+                                idCuenta))
+                .containsExactly(
+                        Map.of(
+                                "id_cuenta",
+                                idCuenta,
+                                "accion",
+                                "INICIAR_EVALUACION",
+                                "entidad_tipo",
+                                "EVALUACION",
+                                "entidad_id",
+                                id,
+                                "id_evaluacion",
+                                id,
+                                "fechado",
+                                true));
     }
 
     @Test
@@ -335,7 +371,7 @@ class EvaluacionApiIntegrationTest {
         when(autenticacion.validar("token-ficticio"))
                 .thenReturn(
                         java.util.Optional.of(
-                                new IdentidadSesion(1L, 1L, "SUJETO", java.util.Set.of())));
+                                new IdentidadSesion(idCuenta, 1L, "SUJETO", java.util.Set.of())));
         return mockMvc.perform(
                 context -> {
                     var peticion = solicitud.buildRequest(context);
