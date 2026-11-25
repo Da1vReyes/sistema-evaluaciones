@@ -27,6 +27,5 @@ de texto libre y no genera entradas de clave cerrada.
 
 El modelo de dominio proviene del PR #60; las dos tablas y sus adaptadores de
 persistencia provienen del PR #50. Las pruebas usan únicamente contenido
-ficticio. La autorización del endpoint utiliza el permiso de edición de
-contenido existente; hasta integrar seguridad, el adaptador predeterminado
-deniega la operación.
+ficticio. E29 exige el permiso `OPCIONES_EDITAR` mediante la autorización por
+sesión Bearer del módulo común.
