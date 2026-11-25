@@ -24,8 +24,10 @@ import com.universidad.tests.dto.request.RegistrarRespuestasRequest.Palabra;
 import com.universidad.tests.dto.request.RegistrarRespuestasRequest.Seleccion;
 import com.universidad.tests.infrastructure.persistence.entity.ConfiguracionSubpruebaJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.OpcionRespuestaJpaEntity;
+import com.universidad.tests.infrastructure.persistence.entity.PeriodoJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.PreguntaJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.SubpruebaJpaEntity;
+import com.universidad.tests.infrastructure.persistence.entity.SujetoJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.TestJpaEntity;
 import com.universidad.tests.infrastructure.persistence.entity.VersionFormularioJpaEntity;
 import jakarta.persistence.EntityManager;
@@ -72,12 +74,23 @@ class MotorSubpruebasIntegrationTest {
     void preparar() {
         transacciones.executeWithoutResult(
                 estado -> {
+                    var sujeto = new SujetoJpaEntity(null, "Sujeto", "Ficticio", null);
+                    var periodo =
+                            new PeriodoJpaEntity(
+                                    UUID.randomUUID().toString(),
+                                    "Periodo ficticio",
+                                    null,
+                                    null,
+                                    true);
+                    em.persist(sujeto);
+                    em.persist(periodo);
                     var test =
                             new TestJpaEntity(
                                     "MOTOR_" + UUID.randomUUID(), "Prueba ficticia", null, true);
                     em.persist(test);
                     idTest = test.getIdTest();
-                    var seleccion = new SubpruebaJpaEntity(test, "SUB", "Selección ficticia", null);
+                    var seleccion =
+                            new SubpruebaJpaEntity(test, "SUB", "SelecciÃ³n ficticia", null);
                     var fv = new SubpruebaJpaEntity(test, "FV", "Fluidez ficticia", null);
                     em.persist(seleccion);
                     em.persist(fv);
@@ -127,8 +140,8 @@ class MotorSubpruebasIntegrationTest {
                                     .guardar(
                                             new Evaluacion(
                                                     null,
-                                                    25L,
-                                                    3L,
+                                                    sujeto.getIdSujeto(),
+                                                    periodo.getIdPeriodo(),
                                                     idTest,
                                                     version.getIdVersionFormulario(),
                                                     EstadoEvaluacion.EN_CURSO,
@@ -431,7 +444,7 @@ class MotorSubpruebasIntegrationTest {
                             pregunta,
                             letras[i],
                             i + 1,
-                            "Opción ficticia",
+                            "OpciÃ³n ficticia",
                             "/recursos/v1/" + letras[i] + ".png"));
         }
         return pregunta.getIdPregunta();

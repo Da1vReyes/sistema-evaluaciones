@@ -22,7 +22,6 @@ import com.universidad.tests.dto.request.RegistrarRespuestasRequest;
 import com.universidad.tests.dto.response.AvanceSubpruebaResponse;
 import com.universidad.tests.dto.response.PreguntasSubpruebaResponse;
 import com.universidad.tests.dto.response.SubpruebaActivaResponse;
-import com.universidad.tests.mapper.MotorSubpruebasMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -110,12 +109,12 @@ public class MotorSubpruebasService {
         if (subprueba.esFluidezVerbal()
                 && (subprueba.letraInicial() == null || subprueba.letraInicial().isBlank())) {
             throw new MotorSubpruebasException(
-                    LETRA_NO_CONFIGURADA, "La letra inicial de FV no está configurada.");
+                    LETRA_NO_CONFIGURADA, "La letra inicial de FV no estÃ¡ configurada.");
         }
 
         if (subprueba.duracionSegundos() <= 0) {
             throw new MotorSubpruebasException(
-                    ERROR_INTERNO, "La duración de la subprueba no está configurada.");
+                    ERROR_INTERNO, "La duraciÃ³n de la subprueba no estÃ¡ configurada.");
         }
 
         EvaluacionSubprueba activa = subprueba.iniciar(ahora);
@@ -131,7 +130,7 @@ public class MotorSubpruebasService {
         Instant ahora = reloj.instant();
         if (subprueba.vencio(ahora)) {
             throw new MotorSubpruebasException(
-                    SUBPRUEBA_NO_ACTIVA, "El tiempo de la subprueba finalizó.");
+                    SUBPRUEBA_NO_ACTIVA, "El tiempo de la subprueba finalizÃ³.");
         }
         ConfiguracionSubprueba configuracion = configuracionAplicada(evaluacion, subprueba);
         List<RespuestaEvaluacion> guardadas = respuestas.listar(id, subprueba.codigo());
@@ -182,7 +181,7 @@ public class MotorSubpruebasService {
                         && subprueba.fechaCierre().isBefore(subprueba.fechaFinLimite());
         if (subprueba.vencio(recepcion) && !cierreAnticipado) {
             throw new MotorSubpruebasException(
-                    TIEMPO_AGOTADO, "La respuesta llegó después del plazo.");
+                    TIEMPO_AGOTADO, "La respuesta llegÃ³ despuÃ©s del plazo.");
         }
         exigirActiva(evaluacion, subprueba);
         ConfiguracionSubprueba configuracion = configuracionAplicada(evaluacion, subprueba);
@@ -211,7 +210,7 @@ public class MotorSubpruebasService {
                 || solicitud.respuestas() == null
                 || solicitud.respuestas().isEmpty()) {
             throw new MotorSubpruebasException(
-                    SOLICITUD_INVALIDA, "Envíe una lista de respuestas de selección.");
+                    SOLICITUD_INVALIDA, "EnvÃ­e una lista de respuestas de selecciÃ³n.");
         }
         Set<Long> incluidas = new HashSet<>();
         return solicitud.respuestas().stream()
@@ -224,7 +223,7 @@ public class MotorSubpruebasService {
                                     || !incluidas.add(item.preguntaId())) {
                                 throw new MotorSubpruebasException(
                                         SOLICITUD_INVALIDA,
-                                        "Cada respuesta requiere una pregunta única y una opción.");
+                                        "Cada respuesta requiere una pregunta Ãºnica y una opciÃ³n.");
                             }
                             preguntas
                                     .buscarPorId(item.preguntaId())
@@ -238,14 +237,14 @@ public class MotorSubpruebasService {
                                             () ->
                                                     new MotorSubpruebasException(
                                                             RESPUESTA_INVALIDA,
-                                                            "La pregunta no pertenece a la configuración aplicada."));
+                                                            "La pregunta no pertenece a la configuraciÃ³n aplicada."));
                             var opcion =
                                     opciones.buscarPorCodigo(item.preguntaId(), item.opcion())
                                             .orElseThrow(
                                                     () ->
                                                             new MotorSubpruebasException(
                                                                     RESPUESTA_INVALIDA,
-                                                                    "La opción no pertenece a la pregunta."));
+                                                                    "La opciÃ³n no pertenece a la pregunta."));
                             return new RespuestaEvaluacion(
                                     null,
                                     subprueba.idEvaluacion(),
@@ -267,7 +266,7 @@ public class MotorSubpruebasService {
                 || solicitud.palabras().isEmpty()
                 || solicitud.palabras().size() > subprueba.maximoEntradas()) {
             throw new MotorSubpruebasException(
-                    SOLICITUD_INVALIDA, "Envíe una lista de palabras dentro del máximo de FV.");
+                    SOLICITUD_INVALIDA, "EnvÃ­e una lista de palabras dentro del mÃ¡ximo de FV.");
         }
         Set<Integer> ordenes = new HashSet<>();
         return solicitud.palabras().stream()
@@ -282,12 +281,12 @@ public class MotorSubpruebasService {
                                     || palabra.texto().isBlank()) {
                                 throw new MotorSubpruebasException(
                                         SOLICITUD_INVALIDA,
-                                        "FV requiere texto no vacío y posiciones únicas dentro del máximo configurado.");
+                                        "FV requiere texto no vacÃ­o y posiciones Ãºnicas dentro del mÃ¡ximo configurado.");
                             }
                             if (palabra.texto().indexOf('\0') >= 0) {
                                 throw new MotorSubpruebasException(
                                         SOLICITUD_INVALIDA,
-                                        "El texto de FV no puede contener el carácter nulo.");
+                                        "El texto de FV no puede contener el carÃ¡cter nulo.");
                             }
                             return new RespuestaEvaluacion(
                                     null,
@@ -333,13 +332,14 @@ public class MotorSubpruebasService {
                         () ->
                                 new MotorSubpruebasException(
                                         ERROR_INTERNO,
-                                        "La configuración aplicada no está disponible."));
+                                        "La configuraciÃ³n aplicada no estÃ¡ disponible."));
     }
 
     private void exigirActiva(Evaluacion evaluacion, EvaluacionSubprueba subprueba) {
         if (evaluacion.estado() != EstadoEvaluacion.EN_CURSO
                 || subprueba.estado() != EstadoSubprueba.ACTIVA) {
-            throw new MotorSubpruebasException(SUBPRUEBA_NO_ACTIVA, "La subprueba no está activa.");
+            throw new MotorSubpruebasException(
+                    SUBPRUEBA_NO_ACTIVA, "La subprueba no estÃ¡ activa.");
         }
     }
 }
