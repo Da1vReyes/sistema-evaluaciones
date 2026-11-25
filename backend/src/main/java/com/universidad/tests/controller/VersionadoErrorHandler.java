@@ -13,7 +13,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice
+@RestControllerAdvice(
+        assignableTypes = {
+            ConfiguracionVersionadaController.class,
+            PreguntaVersionadaController.class,
+            VersionFormularioController.class
+        })
 public class VersionadoErrorHandler {
 
     @ExceptionHandler({
