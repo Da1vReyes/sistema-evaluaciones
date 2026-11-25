@@ -1,10 +1,17 @@
 # DOC-03 Modelo de datos
 
-**Estado: pendiente de definición y aprobación.** No existen tablas del dominio en este esqueleto.
+**Estado: Propuesta del sprint 03.**
 
-Posibles conceptos por investigar en el análisis funcional: evaluados, períodos, preguntas, opciones, intentos, respuestas, resultados e informes.
+## Diagrama y temas del modelo
 
-El equipo documentador debe acordar entidades, atributos, relaciones, restricciones, trazabilidad y protección de datos **antes** de generar SQL o clases JPA.
+El diagrama reúne el núcleo común aprobado en DOC-40, las tablas de claves y baremos de BFA y las propuestas de calificación de DOC-34-BFAW:
+[editable en Draw.io](../diagramas/modelo-er.drawio) · [vista PNG](../diagramas/modelo-er.png).
+DOC-34-OTR reutiliza las tablas comunes de calificación para Thurstone y Allport. Orientación Vocacional no tiene calificación automática definida. La propuesta de baremos genéricos (OTR-05) y la diferencia de auditoría entre DOC-31 y DOC-35-COM quedan pendientes de decisión.
+
+- [Ítems y formularios](items-formularios.md)
+- [Aplicación y respuestas (DOC-33, seguimiento en ClickUp)](https://app.clickup.com/t/1k5fzqb0ft6): el documento del tema aún no está en el repositorio.
+- [Calificación, escalas y baremos](calificacion-baremos.md)
+- [Identidad, periodos y auditoría](identidad-auditoria.md)
 
 ## Decisiones registradas en el repositorio
 
@@ -12,6 +19,74 @@ El equipo documentador debe acordar entidades, atributos, relaciones, restriccio
 | --- | --- | --- |
 | 2026-11-17 | GEN-01-BE | `subprueba.factor` (`VARCHAR(80)`, nulo mientras no se cargue): código del factor al que aporta la subprueba según el Documento BFA §5.3. Varias subpruebas pueden compartir factor (S1 y S1b → S1; N1-A y N1-B → N1). Migración `V202611170600__comun_agregar_factor_subprueba.sql`. |
 | 2026-11-17 | GEN-01-BE | E2 no guarda `opciones` ni `numeroPreguntas`: los calcula desde `pregunta` y `opcion_respuesta` de la configuración publicada. |
+
+## Incógnitas y decisiones
+
+Tarea DOC-42. Reúne las decisiones del modelo que tomaron los cuatro temas (DOC-32 a DOC-35) y las incógnitas que siguen abiertas. Cada incógnita queda resuelta con su fuente o marcada «Preguntar al docente». No incluye ítems, claves ni valores de baremos reales.
+
+### Decisiones del modelo
+
+| ID | Decisión | Fuente | Tema |
+| --- | --- | --- | --- |
+| D-01 | Los nombres que ya existen en `main` o en los PR #89, #41, #91, #50 y #69 no se renombran; los temas cuelgan sus tablas del núcleo. | Núcleo y glosario (DOC-31) | Todos |
+| D-02 | Las claves y baremos de BFA conservan `version_clave_bfa`, `entrada_clave_bfa`, `baremo_bfa` y `rango_baremo_bfa`. | PR #50 y #69; DOC-31 | DOC-34 |
+| D-03 | Weill Forma A es una sola subprueba de 60 preguntas; la lámina se deriva de la posición (12 por lámina). No se crean cinco subpruebas. | Nota Weill (DOC-36) §1 | DOC-32 / DOC-34 |
+| D-04 | Weill usa opción única 1–8 por pregunta; se puede finalizar con preguntas omitidas y valen 0. | Nota Weill §2 y §5 | DOC-33 / DOC-34 |
+| D-05 | Weill no tiene límite de tiempo por defecto: `configuracion_subprueba.tiempo_limite_segundos` queda nulo. | Docente 21/11 (H-01); Nota Weill §3 | DOC-32 |
+| D-06 | Un dato normativo que no se puede calcular queda nulo con estado y motivo; nunca se rellena con 0. | Documento BFA ENT-BFA-10; Nota Weill §7 | DOC-34 |
+| D-07 | `sujeto`, `periodo` y `cuenta` usan los nombres físicos del núcleo (`codigo_institucional`, `fecha_nacimiento`, `fecha_inicio`, `fecha_fin`, `estado` ACTIVA/INHABILITADA…), no los atributos lógicos en camelCase de las fichas ENT-COM. | Núcleo y glosario (DOC-31) | DOC-35 |
+| D-08 | La duda I-01 de DOC-32 (estructura de Weill) queda resuelta: la Nota Weill fue aceptada el 24/11. Weill puede seguir el mismo patrón de clave: una entrada por pregunta (60 entradas, la secuencia de 12 repetida en las 5 láminas). | Nota Weill (DOC-36) §1, §2 y §5 | DOC-32 |
+
+### Incógnitas
+
+| ID | Incógnita e impacto en el modelo | Estado | Responsable |
+| --- | --- | --- | --- |
+| I-01 | Nombres definitivos de las PK de `evaluacion_subprueba`, `respuesta_evaluacion` y `solicitud_calculo_subprueba` (hoy `id` en #41). | Resolver en GEN-37-BE | Backend (GEN-37-BE) |
+| I-02 | `baremo_bfa` no tiene FK a `test` ni a `version_formulario`: no se sabe a qué edición pertenece una norma. | Resolver en el modelo | Integración y DOC-34 |
+| I-03 | `rango_baremo_bfa.id_factor` es texto y no hay tabla de factores (FactorPsicometrico). | Resolver en el modelo | DOC-34 |
+| I-04 | El baremo no tiene grupo de población estructurado (edad mínima y máxima; AN, AD, UN), y Weill lo necesita para elegir la columna. | Resolver en el modelo | DOC-34 |
+| I-05 | Dónde se guardan los subtotales por lámina de Weill, que no son factores (H del tema DOC-34). | Resolver en el modelo | DOC-34 |
+| I-06 | Columnas de 7 y 9 años no monótonas: E30 las rechaza por rangos superpuestos, pero el docente pidió tomar la tabla tal como está (H-03). | Preguntar al docente | Iván |
+| I-07 | Percentil y CI para puntajes fuera de la tabla de Weill (H-04). | Preguntar al docente | Iván |
+| I-08 | Cuándo se usa AD o UN para mayores de 16 años (H-06). | Preguntar al docente | Iván |
+| I-09 | Lista de categorías de Weill: 7 en la tabla del docente frente a 6 en F-01 (H-02). | Preguntar al docente | Iván |
+| I-10 | `permitirRetroceso` (ENT-COM-13) no tiene columna ni aparece en el contrato. | Resolver en el modelo | DOC-32 e Integración |
+| I-11 | Cómo se aplica «a lo sumo una clave APROBADA por versión»: índice único parcial o regla de aplicación. | Resolver en el modelo | Backend y custodio de migraciones |
+| I-12 | Formato de `recurso_ref` y dónde se guardan las imágenes; además, `opcion_respuesta` no tiene recurso propio y Weill necesita una imagen por opción. | Resolver en el modelo | DOC-32 y Backend |
+| I-13 | Catálogo de valores de `accion` y `entidad_tipo` en `evento_auditoria`. | Resolver en el modelo | DOC-35 y Backend |
+
+## Endpoints y tablas
+
+**Tarea:** DOC-41 · **Estado:** borrador. Muestra qué tablas lee y escribe cada endpoint del contrato (`docs/api/openapi.yaml`). Esta sección cubre **E1–E15** (Diego); **E16–E31** los completa Daysi en este mismo PR.
+
+**Cómo leer los nombres de tabla**
+
+- **Físico:** la tabla existe en las migraciones del repositorio (`test`, `subprueba`, `configuracion_subprueba`, `version_formulario`, `pregunta`, `opcion_respuesta`) o en la PR #89 (`cuenta`, `cuenta_rol`, `sesion`, aún en borrador).
+- *Lógico:* entidad del Documento general (ENT-COM) cuya tabla todavía no está en el repositorio. Se escribe en cursiva y su nombre físico está **por confirmar** al fusionarse la migración correspondiente. Las lecturas y escrituras de estos casos son una **propuesta** derivada del propósito del endpoint en el contrato, no un comportamiento ya implementado.
+
+| Endpoint | Método y ruta | Tablas que lee | Tablas que escribe | Comentario |
+| --- | --- | --- | --- | --- |
+| E1 | `GET /api/v1/tests` | `test` | — | Lista los tests activos (`activo`). |
+| E2 | `GET /api/v1/tests/{testId}` | `test`, `subprueba`, `version_formulario`, `configuracion_subprueba`, `pregunta`, `opcion_respuesta` | — | Lee la edición publicada. `opciones` y `numeroPreguntas` se calculan desde `pregunta` y `opcion_respuesta`, no se guardan (decisión de GEN-01-BE). |
+| E3 | `POST /api/v1/evaluaciones` | *sujeto*, *periodo*, `test`, `version_formulario`, `configuracion_subprueba` | *evaluacion*, *evaluacion_subprueba* | Fija sujeto, periodo y edición publicada al iniciar. Puede registrar un evento de auditoría. |
+| E4 | `GET /api/v1/evaluaciones/{evaluacionId}` | *evaluacion*, *evaluacion_subprueba*, *respuesta* | — | Estado y avance. Si el límite venció, muestra la subprueba CERRADA con `cerradaEn` igual al límite (según el contrato común, comentario de Iván en DOC-02). |
+| E5 | `POST /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/iniciar` | *evaluacion*, `configuracion_subprueba`, *evaluacion_subprueba* | *evaluacion_subprueba*, *evento de auditoría* | Registra el inicio real y, si hay duración autorizada, el límite. |
+| E6 | `GET /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/preguntas` | *evaluacion_subprueba*, `configuracion_subprueba`, `pregunta`, `opcion_respuesta`, *respuesta* | — | Devuelve los reactivos y la selección previa; no expone la clave. |
+| E7 | `PUT /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/respuestas` | *evaluacion_subprueba*, `pregunta`, `opcion_respuesta` | *respuesta*, *evento de auditoría* | Valida que la opción pertenezca a la pregunta y que la ejecución esté activa. Una fila por ejecución y pregunta. |
+| E8 | `POST /api/v1/evaluaciones/{evaluacionId}/finalizar` | *evaluacion*, *evaluacion_subprueba*, *respuesta*, *insumos de cálculo (clave y baremo)* | *evaluacion*, *evaluacion_subprueba*, *resultado*, *revisión de cálculo*, *evento de auditoría* | Cierra y consolida. El cálculo depende de decisiones abiertas de Psicología. |
+| E9 | `GET /api/v1/evaluaciones/{evaluacionId}/resultados` | *resultado*, *revisión de cálculo* | — | Solo el resultado publicado, según permisos. |
+| E10 | `PUT /api/v1/evaluaciones/{evaluacionId}/calificaciones/{calificacionId}/palabras/{respuestaId}/revision` | *respuesta*, *calificación* | *revisión de palabra*, *evento de auditoría* | Fluidez Verbal (BFA). No aplica a Weill. |
+| E11 | `POST /api/v1/evaluaciones/{evaluacionId}/recalculos` | *evaluacion*, *resultado*, *respuesta*, *insumos de cálculo* | *revisión de cálculo*, *evento de auditoría* | Crea una revisión nueva; el historial se conserva. |
+| E12 | `PUT /api/v1/evaluaciones/{evaluacionId}/resultados/vigente` | *resultado*, *revisión de cálculo* | *resultado*, *evento de auditoría* | Actualiza la revisión vigente y el estado. Actualización y bitácora en la misma transacción. |
+| E13 | `POST /api/v1/auth/registro` | `cuenta` | `cuenta`, `cuenta_rol` | Comprueba que el correo sea único; guarda solo el resumen de la contraseña. El rol inicial lo define la regla de registro (por confirmar). |
+| E14 | `POST /api/v1/auth/sesion` | `cuenta`, `cuenta_rol` | `sesion` | Abre sesión; guarda el resumen del token, el rol activo y `expira_en`. |
+| E15 | `DELETE /api/v1/auth/sesion` | `sesion` | `sesion` | Cierra la sesión actual escribiendo `cerrada_en`; no borra la fila. |
+
+## Criterios de aceptación
+
+- [ ] Los 31 endpoints están: **E1–E15** aquí; **E16–E31** pendientes de Daysi.
+- [x] En E1–E15 solo aparecen nombres de tablas físicas del repositorio o de la PR #89, o entidades lógicas marcadas en cursiva por confirmar.
+- [ ] Reemplazar los nombres en cursiva por los físicos cuando se fusionen las migraciones de evaluación, resultado y auditoría.
 
 ## Núcleo y glosario
 
@@ -101,7 +176,7 @@ Un test agrega tablas propias con FK a estas tablas del núcleo, sin modificar s
 ## Cómo el modelo respalda la API
 
 **Tarea:** DOC-46 · **Responsable del aporte:** Javier Josué Espinoza Blandón  
-**Estado:** guion preliminar. Los nombres se deben revalidar con DOC-41 y DOC-45 antes de la entrega oficial.
+**Estado:** guion contrastado con las migraciones fusionadas para E3 y el soporte de E7. E9 se explica como diseño pendiente de validación física con DOC-45.
 
 ### Guion oral
 
@@ -115,26 +190,26 @@ Un test agrega tablas propias con FK a estas tablas del núcleo, sin modificar s
 
 **1:05–1:40 · E3, crear una evaluación**
 
-> En E3 se selecciona el test y su versión vigente. El catálogo usa `test`, `version_formulario` y `configuracion_subprueba`. El diseño prevé identificar al sujeto y al período y registrar la evaluación y sus aplicaciones de subprueba. Así queda registrada la edición aplicable desde el inicio.
+> En E3 se selecciona el test y su versión vigente. El catálogo usa `test`, `version_formulario` y `configuracion_subprueba`. La creación vincula al sujeto y al período y registra la evaluación y sus aplicaciones de subprueba. Así queda registrada la edición aplicable desde el inicio.
 
 **1:40–2:15 · E7, registrar respuestas**
 
-> En E7, al guardar una respuesta de selección, se consulta la aplicación de subprueba y se comprueba que la opción corresponda a la pregunta. Las tablas de catálogo son `pregunta` y `opcion_respuesta`. El modelo registra el valor en `respuesta_evaluacion`, ligado a la aplicación correspondiente. Esa relación permite recuperar lo contestado para el cálculo.
+> En E7, al guardar una respuesta de selección, se consulta la aplicación de subprueba y se comprueba que la opción corresponda a la pregunta. Las tablas de catálogo son `pregunta` y `opcion_respuesta`. El esquema admite guardar el valor en `respuesta_evaluacion`, ligado a la aplicación correspondiente. Esa relación permite recuperar lo contestado para el cálculo.
 
 **2:15–2:45 · E9, consultar resultados**
 
-> En E9, el diseño consulta el `resultado` de la evaluación y la referencia a su revisión vigente. El estado permite distinguir un cálculo en curso, un resultado pendiente de validación y uno disponible. La consulta devuelve lo que permite el rol y conserva el historial de revisiones.
+> En E9, el diseño consulta el `resultado` de la evaluación y la referencia a su revisión vigente. El estado permite distinguir un cálculo en curso, un resultado pendiente de validación y uno disponible. La consulta propuesta devuelve la revisión vigente según los permisos del rol.
 
-### Comprobación técnica previa al PR
+### Contraste con el contrato y las migraciones
 
-| Caso | Contrato | Tablas físicas confirmadas en `main` para el ejemplo | Evidencia adicional y validación pendiente |
-|---|---|---|---|
-| E3 | `POST /api/v1/evaluaciones` | `test`, `version_formulario`, `configuracion_subprueba` | `evaluacion` y `evaluacion_subprueba` aparecen en el SQL del PR #41. `sujeto` y `periodo` aparecen en el PR #91. Contrastar FK y nombres con las migraciones integradas. |
-| E7 | `PUT /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/respuestas` | `pregunta`, `opcion_respuesta` | El SQL del PR #41 incluye `evaluacion_subprueba`, `respuesta_evaluacion` y la FK compuesta que relaciona opción y pregunta. Confirmar el SQL integrado y la implementación del endpoint. |
-| E9 | `GET /api/v1/evaluaciones/{evaluacionId}/resultados` | Pendiente de confirmación física en la base revisada | DOC-31 define `resultado` y `referencia_revision_vigente`. La tabla de revisión depende del módulo. Confirmar ambos puntos con DOC-45 antes de la entrega. |
+| Caso | Contrato | Tablas físicas confirmadas en `main` | Alcance verificado |
+| --- | --- | --- | --- |
+| E3 | `POST /api/v1/evaluaciones` | `sujeto`, `periodo`, `test`, `version_formulario`, `configuracion_subprueba`, `evaluacion`, `evaluacion_subprueba` | El rescate GEN-35-BE (#125) incorpora E3, crea sujeto y período y establece sus FK desde evaluación. El motor (#104) crea evaluación y las aplicaciones de subprueba. |
+| E7 | `PUT /api/v1/evaluaciones/{evaluacionId}/subpruebas/{codigo}/respuestas` | `evaluacion_subprueba`, `pregunta`, `opcion_respuesta`, `respuesta_evaluacion` | El motor (#104) aporta la relación de la respuesta con la aplicación y la correspondencia entre pregunta y opción. El ejemplo describe el soporte relacional y se contrasta con la implementación final del endpoint. |
+| E9 | `GET /api/v1/evaluaciones/{evaluacionId}/resultados` | Las migraciones revisadas de `main` todavía no confirman `resultado` ni `revision_resultado`. | DOC-41 (#120) y el diagrama documentan el diseño. La revisión vigente se selecciona mediante `resultado.referencia_revision_vigente`. Verificar las tablas físicas con DOC-45 y el backend de E9 (#73) antes del cierre. |
 
-
-- [Contrato OpenAPI](https://github.com/Nell16/sistema-evaluaciones/blob/main/docs/api/openapi.yaml)
-- [Mapa DOC-41, PR #98](https://github.com/Nell16/sistema-evaluaciones/pull/98)
-- [Motor de subpruebas, PR #41](https://github.com/Nell16/sistema-evaluaciones/pull/41) · [Sujeto y período, PR #91](https://github.com/Nell16/sistema-evaluaciones/pull/91)
-- [DOC-45](https://app.clickup.com/t/90141806675/1k5fzqb0fte)
+- [Contrato OpenAPI](../api/openapi.yaml)
+- [Motor de evaluación, PR #104](https://github.com/Nell16/sistema-evaluaciones/pull/104) · [Migración V202611240800](../../database/migrations/V202611240800__comun_motor_evaluacion.sql)
+- [Sujeto, período y E3, PR #125](https://github.com/Nell16/sistema-evaluaciones/pull/125) · [Migración V202611240830](../../database/migrations/V202611240830__comun_sujeto_periodo.sql)
+- [Mapa DOC-41, PR #98](https://github.com/Nell16/sistema-evaluaciones/pull/98) · [Ampliación del mapa, PR #120](https://github.com/Nell16/sistema-evaluaciones/pull/120)
+- [Diagrama ER](../diagramas/modelo-er.drawio) · [DOC-45](https://app.clickup.com/t/90141806675/1k5fzqb0fte) · [Backend de E9, PR #73](https://github.com/Nell16/sistema-evaluaciones/pull/73)
