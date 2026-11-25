@@ -14,6 +14,7 @@ import com.universidad.tests.domain.repository.SesionRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,7 +123,7 @@ public class AutenticacionService {
         Rol rolActivo = rolActivoDe(cuenta);
         String token = tokens.generar();
 
-        Instant abiertaEn = reloj.instant();
+        Instant abiertaEn = reloj.instant().truncatedTo(ChronoUnit.MICROS);
         Instant expiraEn = abiertaEn.plus(duracionSesion);
         sesionRepository.guardar(
                 new Sesion(
