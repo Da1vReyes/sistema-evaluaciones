@@ -2,13 +2,17 @@ package com.universidad.tests.controller;
 
 import com.universidad.tests.application.usecase.RegistroCuentaException;
 import com.universidad.tests.dto.response.ErrorResponse;
+import com.universidad.tests.dto.response.ErrorResponse.DetalleCampo;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
@@ -58,6 +62,23 @@ public class ManejadorEntradaAuth extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request) {
         String ruta = ((ServletWebRequest) request).getRequest().getRequestURI();
+        List<DetalleCampo> detalles = List.of();
+        if (ex instanceof MethodArgumentNotValidException validacion) {
+            detalles =
+                    validacion.getBindingResult().getFieldErrors().stream()
+                            .map(
+                                    error ->
+                                            new DetalleCampo(
+                                                    error.getField(),
+                                                    "El campo es obligatorio o su formato no es valido"))
+                            .toList();
+        } else if (ex instanceof HttpMessageNotReadableException) {
+            detalles =
+                    List.of(
+                            new DetalleCampo(
+                                    "cuerpo",
+                                    "Debe enviar JSON valido con los tipos de campo indicados"));
+        }
         return ResponseEntity.status(status)
                 .headers(headers)
                 .body(
@@ -66,6 +87,7 @@ public class ManejadorEntradaAuth extends ResponseEntityExceptionHandler {
                                 status.value(),
                                 "SOLICITUD_INVALIDA",
                                 "La solicitud no es valida",
-                                ruta));
+                                ruta,
+                                detalles));
     }
 }

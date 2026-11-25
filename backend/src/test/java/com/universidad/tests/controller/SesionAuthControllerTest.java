@@ -40,6 +40,19 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(AbrirSesionService.class)
 class SesionAuthControllerTest {
 
+    @Test
+    void abrir_sinContrasena_incluyeDetalleDeCampo() throws Exception {
+        mvc.perform(
+                        post("/api/v1/auth/sesion")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"correo\":\"persona@example.test\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("SOLICITUD_INVALIDA"))
+                .andExpect(jsonPath("$.detalles[0].campo").value("contrasena"))
+                .andExpect(jsonPath("$.detalles[0].mensaje").isString());
+        verifyNoInteractions(autenticacion);
+    }
+
     private static final String RUTA = "/api/v1/auth/sesion";
     private static final String CUERPO =
             "{\"correo\":\"persona@example.test\",\"contrasena\":\" clave ficticia \"}";
