@@ -7,7 +7,6 @@ import '../features/acceso/acceso.css';
 // Durante la aplicación la persona evaluada no ve la navegación (no debe llegar a resultados).
 const RUTAS_APLICACION = [
   /^\/bfa\/evaluaciones\/[^/]+$/,
-  /^\/weill\/intentos\/[^/]+(\/constancia)?$/,
 ];
 
 /** Marco común de todas las páginas, con la navegación principal. */
