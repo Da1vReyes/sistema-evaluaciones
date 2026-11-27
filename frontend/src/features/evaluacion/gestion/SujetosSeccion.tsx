@@ -66,7 +66,7 @@ export function SujetosSeccion() {
       {busqueda.estado.fase === 'exito' &&
         (busqueda.estado.datos.length === 0 ? (
           <p className="ev-ayuda" role="status">
-            No hay una persona con ese identificador. Puede registrarla abajo.
+            No se encontraron personas con ese identificador entre las asignadas a su cuenta.
           </p>
         ) : (
           <ul role="status">
